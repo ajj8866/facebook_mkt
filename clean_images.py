@@ -34,6 +34,9 @@ class CleanImages(CleanData):
                 img_dim_list.append(image.shape)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
         image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Shape': img_dim_list})
+        image_frame.loc[:, 'Num_Channels'] = image_frame['Image_Shape'].apply(lambda i: len(i))
+        print(image_frame['Num_Channels'].unique())
+        print(image_frame['Num_Channels'].value_counts())
         print(image_frame.head())
         return image_frame
 
