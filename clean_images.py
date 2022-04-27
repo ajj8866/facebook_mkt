@@ -18,18 +18,24 @@ class CleanImages(CleanData):
         super().__init__(tab_names)
         print(self.tab_names)
         print(self.df.head())
-        self.csc_df = None
+        self.csv_df = None
 
 
     def img_shape(self):
-        image_re = re.compile(r'.*\.jpg')
+        image_re = re.compile(r'(.*)\.jpg')
         img_dim_list = []
-        for im in os.listdir(Path(Path.cwd(), 'images')):
-            if re.findall(image_re, im) !=[]:
-                print(im)
-                image = imread(im)
+        img_id = []
+        os.chdir(Path(Path.cwd(), 'images'))
+        for im in os.listdir():
+            if re.findall(image_re, im) != []:
+                image = imread(os.path.abspath(im))
+                #print(image.shape)
+                img_id.append(re.search(image_re, im).group(1))
                 img_dim_list.append(image.shape)
-        print(img_dim_list)
+        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
+        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Shape': img_dim_list})
+        print(image_frame.head())
+        return image_frame
 
 
 
