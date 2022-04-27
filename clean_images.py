@@ -25,6 +25,7 @@ class CleanImages(CleanData):
         image_re = re.compile(r'(.*)\.jpg')
         img_dim_list = []
         img_id = []
+        image_array = []
         os.chdir(Path(Path.cwd(), 'images'))
         for im in os.listdir():
             if re.findall(image_re, im) != []:
@@ -32,11 +33,18 @@ class CleanImages(CleanData):
                 #print(image.shape)
                 img_id.append(re.search(image_re, im).group(1))
                 img_dim_list.append(image.shape)
+                image_array.append(image)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
-        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Shape': img_dim_list})
+        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list})
         image_frame.loc[:, 'Num_Channels'] = image_frame['Image_Shape'].apply(lambda i: len(i))
         print(image_frame['Num_Channels'].unique())
         print(image_frame['Num_Channels'].value_counts())
+        print(image_frame[image_frame['Num_Channels'] == 2])
+        ind = image_frame[image_frame['Num_Channels'] == 2].index
+        print(image_frame.head())
+        image_frame['Image_Array'] = np.where(image_frame['Num_Channels']==2, np.expand_dims(image_frame['Image_Array'], -1), image_frame['Image_Array'])
+        image_frame.loc[:, 'Num_Channels'] = image_frame['Image_Shape'].apply(lambda i: len(i))
+        print(image_frame.iloc[ind])
         print(image_frame.head())
         return image_frame
 
