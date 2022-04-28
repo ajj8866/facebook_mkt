@@ -43,16 +43,14 @@ class CleanImages(CleanData):
                 black_back.save(i)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
-
-
-
-    def img_clean_sk(self, preserve_orig = False, normalize = False):
+    def img_clean_sk(self, normalize = False):
         image_re = re.compile(r'(.*)\.jpg')
         img_dim_list = []
         img_id = []
         image_array = []
         img_channels = []
         img_num_features = []
+        img_mode = []
         os.chdir(Path(Path.cwd(), 'images'))
         for im in os.listdir():
             if re.findall(image_re, im) != []:
@@ -62,10 +60,15 @@ class CleanImages(CleanData):
                 img_id.append(re.search(image_re, im).group(1))
                 image_array.append(image)
                 img_dim_list.append(image.shape)
-                img_num_features.append(image.shape[2])
+                if len(image.shape) == 3:
+                    img_num_features.append(image.shape[2])
+                else:
+                    img_num_features.append(1)
                 img_channels.append(len(image.shape))
+                img_mode.append(Image.open(im).mode)
+
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
-        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list})
+        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list, 'Mode': img_mode})
         print(image_frame.head())
         return image_frame
 
@@ -74,9 +77,6 @@ class CleanImages(CleanData):
         print(len(self.csc_df))
 
     
-
-
-
 if __name__ == '__main__':
     print(os.getcwd())
     pd.set_option('display.max_colwidth', 400)

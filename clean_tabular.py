@@ -22,6 +22,7 @@ class CleanData:
             if 'price' in self.df.columns:
                 self.df.dropna(inplace=True)
                 self.df['price'] = self.df['price'].str.replace('£', '').astype(np.float32)
+                self.df = self.df[np.round(self.df['price']) != 0]
         else:
             self.table_dict = {}
             for table in tab_names:
@@ -31,6 +32,7 @@ class CleanData:
                     self.table_dict[table]['price'] = self.table_dict[table][self.table_dict[table]['price'] != 'N/A'.strip()]['price']
                     print(self.table_dict[table].head())
                     self.table_dict[table]['price'] = self.table_dict[table]['price'].str.replace(',', '').str.strip('£').str.strip(' ').astype(np.float32)
+                    self.table_dict[table] = self.table_dict[table][np.round(self.table_dict[table]['price']) != 0]
     
     def try_merge(self, df_list):
         '''
