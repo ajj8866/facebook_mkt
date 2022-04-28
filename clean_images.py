@@ -12,7 +12,9 @@ from matplotlib.gridspec import GridSpec
 from clean_tabular import CleanData
 from skimage.io import imread, imshow
 from skimage import io
+from skimage import img_as_float
 from skimage.transform import rescale, resize
+from PIL import Image
 
 class CleanImages(CleanData):
     def __init__(self, tab_names='images') -> None:
@@ -21,42 +23,49 @@ class CleanImages(CleanData):
         print(self.df.head())
         self.csv_df = None
 
+    def img_clean_pil(self, size = 512, mode = 'RGB'):
+        image_re = re.compile(r'(.*)\.jpg')
+        img_num_features = []
+        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
+        for i in os.listdir():
+            if re.findall(image_re, i) != []:
+                temp_image = Image.open(i)
+                black_back = Image.new(size=(size, size), mode=mode)
+                curr_size = temp_image.size
+                max_dim = max(temp_image.size)
+                scale_fact = size / max_dim
+                resized_image_dim = (int(scale_fact*curr_size[0]), int(scale_fact*curr_size[1]))
+                updated_image = temp_image.resize(resized_image_dim)
+                black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
+                if black_back.mode == 'L':
+                    black_back = black_back.convert('RGB')
+                print(black_back.mode)
+                black_back.save(i)
+        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
-    def img_shape(self, preserve_orig = False, width = 512, height = 512):
+
+
+
+    def img_clean_sk(self, preserve_orig = False, normalize = False):
         image_re = re.compile(r'(.*)\.jpg')
         img_dim_list = []
         img_id = []
         image_array = []
-        img_width = []
-        img_height = []
         img_channels = []
         img_num_features = []
         os.chdir(Path(Path.cwd(), 'images'))
         for im in os.listdir():
             if re.findall(image_re, im) != []:
                 image = io.imread(im)
-                image = resize(image, output_shape=(width,height), mode = 'constant', cval=0, preserve_range=preserve_orig)
-                print(len(image.shape))
-                image = [np.expand_dims(image, axis = -1) if len(image.shape) == 2 else image][0]
+                if normalize == True:
+                    image = img_as_float(image)
                 img_id.append(re.search(image_re, im).group(1))
                 image_array.append(image)
                 img_dim_list.append(image.shape)
-                img_width.append(image.shape[0])
-                img_height.append(image.shape[1])
                 img_num_features.append(image.shape[2])
                 img_channels.append(len(image.shape))
-                if image.shape[2] == 1:
-                    print(image)
-                    image = image.reshape(image.shape[0], image.shape[1])
-                    plt.imsave(fname=f'{re.search(image_re, im).group(1)}.jpg', arr=image)
-                else:
-                    plt.imsave(fname=f'{re.search(image_re, im).group(1)}.jpg', arr=image)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
-        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list, 'Image_Width': img_width, 'Image_Height': img_height, 'Num_Channels': img_channels})
-        print('Maximum width of images: ', np.max(image_frame['Image_Width']))
-        print('Maximum height: ', np.max(img_height))
-        print('Minimum width of images: ', np.min(image_frame['Image_Width']))
-        print('Minimum height: ', np.min(img_height))
+        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list})
         print(image_frame.head())
         return image_frame
 
@@ -77,4 +86,5 @@ if __name__ == '__main__':
     print(cl)
     print(cl.df.head())
     cl.pd_to_csv()
-    cl.img_shape()
+    cl.img_clean_pil()
+    cl.img_clean_sk()
