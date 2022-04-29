@@ -25,7 +25,6 @@ class CleanImages(CleanData):
 
     def img_clean_pil(self, size = 512, mode = 'RGB'):
         image_re = re.compile(r'(.*)\.jpg')
-        img_num_features = []
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
         for i in os.listdir():
             if re.findall(image_re, i) != []:
