@@ -26,6 +26,7 @@ class CleanImages(CleanData):
     def img_clean_pil(self, size = 512, mode = 'RGB'):
         image_re = re.compile(r'(.*)\.jpg')
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
+        t = 0
         for i in os.listdir():
             if re.findall(image_re, i) != []:
                 temp_image = Image.open(i)
@@ -38,7 +39,8 @@ class CleanImages(CleanData):
                 black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
                 if black_back.mode == 'L':
                     black_back = black_back.convert('RGB')
-                print(black_back.mode)
+                t += 1
+                print(t)
                 black_back.save(i)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
@@ -65,17 +67,39 @@ class CleanImages(CleanData):
                     img_num_features.append(1)
                 img_channels.append(len(image.shape))
                 img_mode.append(Image.open(im).mode)
-
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
-        image_frame = pd.DataFrame(data={'Image_ID': img_id, 'Image_Array': image_array,'Image_Shape': img_dim_list, 'Mode': img_mode})
-        print(image_frame.head())
-        return image_frame
-
-    def pd_to_csv(self):
-        self.csc_df = pd.read_csv('Images/Links.csv')
-        print(len(self.csc_df))
-
+        self.image_frame = pd.DataFrame(data={'image_id': img_id, 'image_array': image_array,'image_shape': img_dim_list, 'mode': img_mode})
+        print(self.image_frame.head())
+        return self.image_frame
     
+    def to_excel(self, df):
+        df.to_excel(Path(Path.cwd(), 'test_file','Cleaned_Images.xlsx'), sheet_name = 'images')
+
+    def merge_images(self):
+        self.df.rename({'id': 'image_id', 'product_id': 'id'}, axis=1, inplace=True)
+        self.final_df = self.image_frame.merge(self.df, on='image_id', how='inner', validate='one_to_many')
+        print(self.final_df.head())
+        return self.final_df
+
+    def total_clean(self):
+        self.img_clean_pil()
+        self.img_clean_sk()
+        self.merge_images()
+        return self.final_df
+    
+    def describe_data(self, df):
+        print('\n')
+        print('Data frame columnn information')
+        print(df.info())
+        print('\n')
+        print('#'*20)
+        print('Dataframe statistical metrics')
+        #print(df.describe())
+        print('#'*20)
+        print('Array and shape')
+        print(df['image_shape'].unique())
+        print(df['image_shape'].value_counts())
+
 if __name__ == '__main__':
     print(os.getcwd())
     pd.set_option('display.max_colwidth', 400)
@@ -83,7 +107,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', 40)
     cl = CleanImages()
     print(cl)
-    print(cl.df.head())
-    cl.pd_to_csv()
-    cl.img_clean_pil()
-    cl.img_clean_sk()
+    cl.total_clean()
+    cl.to_excel(cl.final_df)
+    print(cl.final_df.head())
+    cl.describe_data(cl.final_df)
