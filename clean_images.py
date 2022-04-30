@@ -81,9 +81,9 @@ class CleanImages(CleanData):
         print(self.final_df.head())
         return self.final_df
 
-    def total_clean(self):
-        self.img_clean_pil()
-        self.img_clean_sk()
+    def total_clean(self, normalize=True, mode = 'L'):
+        self.img_clean_pil(mode=mode)
+        self.img_clean_sk(normalize=normalize)
         self.merge_images()
         return self.final_df
     

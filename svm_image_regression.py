@@ -16,10 +16,11 @@ from skimage import img_as_float
 from skimage.transform import rescale, resize
 from PIL import Image
 import sklearn
+from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from clean_images import CleanImages
 from clean_tabular import CleanData
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 
 
@@ -51,6 +52,8 @@ if __name__ == '__main__':
     print(products_df.head())
     print(products_df.columns)
 
+    ### 
+
     # Merging dataframes
     merged_df = image_df.merge(products_df, left_on='id', right_on='id')
     print(merged_df.head())
@@ -58,5 +61,27 @@ if __name__ == '__main__':
     merged_df.to_excel(Path(Path.cwd(), 'test_file', 'Final_Data.xlsx'))
     print(len(merged_df))
 
+    ''' Dataset Preprocessing'''
+    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']]
+    X = filtered_df['image_array'].copy()
+    y = filtered_df['major_category'].copy()
+    X = X.apply(lambda i: i.flatten())
+    category_list = list(set(y))
+    print('\n')
+    print('List of possible categories for classification')
+    print('\n'.join([f'{i}) {j}' for i, j in enumerate(category_list, start=1)]))
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
+    '''Setting up GridSearchCV'''
+    param_grid = {'C': [0.0001, 0.001, 0.01, 0.1, 1, 10], 'gamma': ['scale', 'auto'], 'kernel': ['poly', 'rbf']}
+    svc = SVC()
+    model = GridSearchCV(estimator=svc, param_grid=param_grid)
+    model.fit(X_train, y_train)
+    print(model.best_params_)
+    y_pred = model.predict(y_test)
+
+    '''Model Prediction Evaluation'''
+    print('Accuracy score', accuracy_score(y_test, y_pred))
+    confusion_matrix(y_test, y_pred)
+    classification_report(y_test, y_pred)
 
