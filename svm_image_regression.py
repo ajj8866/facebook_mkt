@@ -28,10 +28,10 @@ if __name__ == '__main__':
     pd.set_option('display.max_colwidth', 400)
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
-
+    img_size = 128
     '''Getting images dataframe'''
     image_class = CleanImages()
-    image_df = image_class.total_clean()
+    image_df = image_class.total_clean(size=img_size)
 
     '''Getting product data'''
     product_class = CleanData(tab_names=['products', 'products_2'])
@@ -62,10 +62,12 @@ if __name__ == '__main__':
     print(len(merged_df))
 
     ''' Dataset Preprocessing'''
-    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']]
+    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']].copy()
+    filtered_df = filtered_df.iloc[: 500]
     X = filtered_df['image_array'].copy()
     y = filtered_df['major_category'].copy()
-    X = X.apply(lambda i: i.flatten())
+    X = np.vstack(X.values)
+    X = X.reshape((-1, img_size*img_size))    
     category_list = list(set(y))
     print('\n')
     print('List of possible categories for classification')
@@ -73,15 +75,15 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
     '''Setting up GridSearchCV'''
-    param_grid = {'C': [0.0001, 0.001, 0.01, 0.1, 1, 10], 'gamma': ['scale', 'auto'], 'kernel': ['poly', 'rbf']}
-    svc = SVC()
+    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10]}
+    svc = SVC(gamma='auto', kernel='rbf')
     model = GridSearchCV(estimator=svc, param_grid=param_grid)
     model.fit(X_train, y_train)
     print(model.best_params_)
-    y_pred = model.predict(y_test)
+    y_pred = model.predict(X_test)
 
     '''Model Prediction Evaluation'''
-    print('Accuracy score', accuracy_score(y_test, y_pred))
+    print('Accuracy score: ', accuracy_score(y_test, y_pred))
     confusion_matrix(y_test, y_pred)
-    classification_report(y_test, y_pred)
-
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True)
+    plt.show()
