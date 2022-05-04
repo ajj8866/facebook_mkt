@@ -29,17 +29,17 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
 
-    # Getting images dataframe
+    '''Getting images dataframe'''
     image_class = CleanImages()
     image_df = image_class.total_clean()
 
-    # Getting product data
+    '''Getting product data'''
     product_class = CleanData(tab_names=['products', 'products_2'])
     product_class.try_merge(['products', 'products_2'])
     product_class.get_na_vals(df='combined')
     products_df = product_class.expand_category()
 
-    # Dataframe diagnostics
+    '''Dataframe diagnostics'''
     print('\n')
     print('Image Dataframe info')
     print(image_df.info())
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     ### 
 
-    # Merging dataframes
+    '''Merging dataframes'''
     merged_df = image_df.merge(products_df, left_on='id', right_on='id')
     print(merged_df.head())
     print(merged_df.info())

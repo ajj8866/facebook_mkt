@@ -30,15 +30,14 @@ class CleanImages(CleanData):
         for i in os.listdir():
             if re.findall(image_re, i) != []:
                 temp_image = Image.open(i)
-                black_back = Image.new(size=(size, size), mode=mode)
+                black_back = Image.new(size=(size, size), mode=temp_image.mode) #, mode=mode
                 curr_size = temp_image.size
                 max_dim = max(temp_image.size)
                 scale_fact = size / max_dim
                 resized_image_dim = (int(scale_fact*curr_size[0]), int(scale_fact*curr_size[1]))
                 updated_image = temp_image.resize(resized_image_dim)
                 black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
-                if black_back.mode == 'L':
-                    black_back = black_back.convert('RGB')
+                black_back = black_back.convert(mode)
                 t += 1
                 print(t)
                 black_back.save(i)
@@ -62,6 +61,7 @@ class CleanImages(CleanData):
                 image_array.append(image)
                 img_dim_list.append(image.shape)
                 if len(image.shape) == 3:
+                    print(im)
                     img_num_features.append(image.shape[2])
                 else:
                     img_num_features.append(1)
