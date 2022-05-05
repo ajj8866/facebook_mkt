@@ -63,7 +63,8 @@ if __name__ == '__main__':
 
     ''' Dataset Preprocessing'''
     filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']].copy()
-    filtered_df = filtered_df.iloc[: 500]
+    num_obs = 1200
+    filtered_df = filtered_df.iloc[:num_obs]
     X = filtered_df['image_array'].copy()
     y = filtered_df['major_category'].copy()
     X = np.vstack(X.values)
@@ -72,14 +73,22 @@ if __name__ == '__main__':
     print('\n')
     print('List of possible categories for classification')
     print('\n'.join([f'{i}) {j}' for i, j in enumerate(category_list, start=1)]))
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     '''Setting up GridSearchCV'''
-    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10]}
+    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
     svc = SVC(gamma='auto', kernel='rbf')
     model = GridSearchCV(estimator=svc, param_grid=param_grid)
+    start_time = time.time()
     model.fit(X_train, y_train)
     print(model.best_params_)
+    total_secs = time.time() - start_time
+    if time.time() - start_time >= 60:
+        mins = (total_secs)//60
+        secs = ((total_secs/60)-mins)*60
+        print(f'Time taken to train model comprising of {num_obs} observations: ', f'{int(mins)} minutes and {int(secs)} seconds')
+    else:
+        print(f'Time taken to train model comprising of {num_obs} observations: ', f'{round(total_secs, 2)} seconds taken')
     y_pred = model.predict(X_test)
 
     '''Model Prediction Evaluation'''
