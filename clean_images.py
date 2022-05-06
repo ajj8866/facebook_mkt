@@ -45,6 +45,7 @@ class CleanImages(CleanData):
 
     def img_clean_sk(self, normalize = False):
         image_re = re.compile(r'(.*)\.jpg')
+        img = []
         img_dim_list = []
         img_id = []
         image_array = []
@@ -54,6 +55,7 @@ class CleanImages(CleanData):
         os.chdir(Path(Path.cwd(), 'images'))
         for im in os.listdir():
             if re.findall(image_re, im) != []:
+                img.append(im)
                 image = io.imread(im)
                 if normalize == True:
                     image = img_as_float(image)
@@ -68,7 +70,7 @@ class CleanImages(CleanData):
                 img_channels.append(len(image.shape))
                 img_mode.append(Image.open(im).mode)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
-        self.image_frame = pd.DataFrame(data={'image_id': img_id, 'image_array': image_array,'image_shape': img_dim_list, 'mode': img_mode})
+        self.image_frame = pd.DataFrame(data={'image_id': img_id, 'image': img,'image_array': image_array,'image_shape': img_dim_list, 'mode': img_mode})
         print(self.image_frame.head())
         return self.image_frame
     
