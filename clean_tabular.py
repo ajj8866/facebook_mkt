@@ -9,6 +9,7 @@ import os
 import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
 from matplotlib.gridspec import GridSpec
 
 class CleanData:
@@ -72,8 +73,12 @@ class CleanData:
                 j.to_excel(writer, sheet_name=i)
     
     def expand_category(self, df = 'combined'):
+        self.major_encoder = LabelEncoder()
+        self.minor_encoder = LabelEncoder()
         self.table_dict[df]['major_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[0])
         self.table_dict[df]['minor_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[1])
+        self.table_dict[df]['major_category_encoded'] = self.major_encoder.fit_transform(self.table_dict[df]['major_category'])
+        self.table_dict[df]['minor_category_encoded'] = self.minor_encoder.fit_transform(self.table_dict[df]['minor_category'])
         return self.table_dict[df]
     
     def sum_by_cat(self, df= 'combined', quant = 0.95):
