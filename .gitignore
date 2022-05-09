@@ -5,3 +5,8 @@ detailed_prod_clean.ipynb
 svm_sketchpad.ipynb
 Final_Data_*.xlsx
 sketch*
+mnist.ipynb
+mnist
+t10k*
+train-labels*
+train-images*
