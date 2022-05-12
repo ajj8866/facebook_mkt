@@ -43,6 +43,7 @@ class Dataset(torch.utils.data.Dataset):
             filtered_df = filtered_df.iloc[:train_end]
         else:
             filtered_df = filtered_df.iloc[train_end:]
+        self.dataset_size = len(filtered_df)
         print('Total observations in remaining dataset: ', len(filtered_df))
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values
@@ -51,14 +52,21 @@ class Dataset(torch.utils.data.Dataset):
     # Not dependent on index
     def __getitem__(self, idx): 
         if self.img_inp_type == 'image':
-            self.X[idx] =  Image.open(os.path.join(self.img_dir, self.X[idx]))
-            print(self.X[idx])
-            if self.transformer is not None:
-                self.X[idx] = self.transformer(self.X[idx])
+            try:
+                print(self.X[idx])
+                self.X[idx] =  Image.open(os.path.join(self.img_dir, self.X[idx]))
+                print(self.X[idx])
+                if self.transformer is not None:
+                    self.X[idx] = self.transformer(self.X[idx])
+            except TypeError:
+                self.X[idx] = self.X[idx]
         elif self.img_inp_type == 'image_array':
-            print(self.X)
-            print(type(self.X))
-            self.X[idx] = torch.from_numpy(self.X[idx])
+            try:
+                print(self.X)
+                print(type(self.X))
+                self.X[idx] = torch.from_numpy(self.X[idx])
+            except TypeError:
+                self.X[idx] = self.X[idx]
         else:
             self.X[idx] = self.X[idx]        
         return self.X[idx], self.y[idx]

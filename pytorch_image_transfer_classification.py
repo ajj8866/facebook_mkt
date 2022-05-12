@@ -40,46 +40,51 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
 
     train_size = 10000
-test_size = 2424
-dataset_size = {'train': train_size, 'test': test_size}
+    test_size = 2424
+    dataset_size = {'train': train_size, 'eval': test_size}
 
 
 
-'Model training and testing function'
-def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 20):
-    best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
-    best_accuracy = 0 # May be changed at end of each "for phase block"
+    'Model training and testing function'
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 20):
+        best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
+        best_accuracy = 0 # May be changed at end of each "for phase block"
 
-    for epoch in range(num_epochs):
-        for phase in ['train', 'eval']:
-            if phase == 'train':
-                model.train()
-            else:
-                model.eval()
-            
-            running_loss = 0
-            running_corrects = 0
-
-            for inputs, labels in data_loader_dict[phase]:
-                optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
-
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
-
-                    if phase == 'train':
-                        loss.backward() #Calculates gradients
-                        optimizer.step()
+        for epoch in range(num_epochs):
+            for phase in ['train', 'eval']:
+                if phase == 'train':
+                    model.train()
+                else:
+                    model.eval()
                 
-                running_loss = running_loss + loss.item()*inputs.size(0)
-                running_corrects = running_corrects + torch.sum(preds == labels.data)
+                running_loss = 0
+                running_corrects = 0
 
-            epoch_loss = running_loss / dataset_size[phase]
-            epoch_acc = running_corrects.double() / dataset_size[phase]
+                for inputs, labels in data_loader_dict[phase]:
+                    optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
-            if phase == 'eval' and epoch_acc > best_accuracy:
-                best_accuracy = epoch_acc
-                best_model_weights = copy.deepcopy(model.state_dict())
-    model.load_state_dict(best_model_weights)
-    return model
+                    with torch.set_grad_enabled(phase == 'train'):
+                        outputs = model(inputs)
+                        _, preds = torch.max(outputs, 1)
+                        loss = loss_type(outputs, labels)
+
+                        if phase == 'train':
+                            loss.backward() #Calculates gradients
+                            optimizer.step()
+                    
+                    running_loss = running_loss + loss.item()*inputs.size(0)
+                    running_corrects = running_corrects + torch.sum(preds == labels.data)
+
+                epoch_loss = running_loss / dataset_size[phase]
+                epoch_acc = running_corrects.double() / dataset_size[phase]
+
+                print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+
+                if phase == 'eval' and epoch_acc > best_accuracy:
+                    best_accuracy = epoch_acc
+                    best_model_weights = copy.deepcopy(model.state_dict())
+                    print(f'Best val Acc: {best_accuracy:.4f}')
+        model.load_state_dict(best_model_weights)
+        return model
+
+    model_tr = train_model()
