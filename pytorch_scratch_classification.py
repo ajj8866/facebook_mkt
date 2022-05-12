@@ -27,7 +27,7 @@ class Dataset(torch.utils.data.Dataset):
         self.img_size = img_size
         '''Yielding images dataset from CleanImages python script'''
         image_class = CleanImages()
-        image_df = image_class.total_clean(size=img_size, normalize=True).copy()
+        image_df = image_class.total_clean(size=img_size, normalize=True, mode='RGB').copy()
 
         '''Yielding product dataset from CleanData python script'''
         product_class = CleanData(tab_names=['products', 'products_2'])
