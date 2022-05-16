@@ -10,14 +10,21 @@ import torchvision.transforms as transforms
 import re
 from PIL import Image
 import multiprocessing
+import torchvision
+from torchbearer import Trial
+from torch.utils.tensorboard.writer import SummaryWriter
 from torchvision.transforms import Normalize, ToPILImage, ToTensor
+from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
+import matplotlib.pyplot as plt
+import seaborn as sns
 from torch import nn
 import torch.optim as optim
 from pathlib import Path
 from pytorch_scratch_classification import Dataset
 from torchvision import models, datasets
 import copy
+import time
 
 if __name__ == '__main__':
     model = models.resnet50(pretrained=True)
@@ -46,10 +53,11 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 20):
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 2):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
-
+        start = time.time()
+    
         for epoch in range(num_epochs):
             for phase in ['train', 'eval']:
                 if phase == 'train':
@@ -64,7 +72,12 @@ if __name__ == '__main__':
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
+                        print('#'*20)
+                        print('Next output')
+                        print('\n*2')
                         outputs = model(inputs)
+                        print(outputs)
+                        print(outputs.shape)
                         _, preds = torch.max(outputs, 1)
                         loss = loss_type(outputs, labels)
 
@@ -85,6 +98,30 @@ if __name__ == '__main__':
                     best_model_weights = copy.deepcopy(model.state_dict())
                     print(f'Best val Acc: {best_accuracy:.4f}')
         model.load_state_dict(best_model_weights)
+        time_diff = time.time()-start
+        print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60)*60} seconds')
         return model
 
-    model_tr = train_model()
+    #model_tr = train_model()
+    
+    def show_image(input_ten_orig):
+        input_ten = torch.clone(input_ten_orig)
+        inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
+        inv_normalize = transforms.Compose([inv_normalize_array])
+        input_ten = inv_normalize(input_ten)
+        plt.imshow(np.transpose(input_ten.numpy(), (1, 2, 0)))
+
+    # train_iterator = iter(train_loader)
+    # img, label = train_iterator.next()
+    # img_grid = torchvision.utils.make_grid(img)
+    # writer = SummaryWriter()
+    # writer.add_image('test_run', img_grid)
+    
+    torchbearer_trial = Trial(model=model, optimizer=optimizer, criterion=criterion, metrics=['acc'], callbacks=[TensorBoard(write_graph=True, write_batch_metrics=False, write_epoch_metrics=False)])
+    torchbearer_trial.with_generators(train_generator=train_loader, val_generator=test_loader)
+    torchbearer_trial.run(epochs=1)
+
+    
+
+
+    

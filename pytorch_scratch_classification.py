@@ -53,16 +53,13 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, idx): 
         if self.img_inp_type == 'image':
             try:
-                print(self.X[idx])
                 self.X[idx] =  Image.open(os.path.join(self.img_dir, self.X[idx]))
-                print(self.X[idx])
                 if self.transformer is not None:
                     self.X[idx] = self.transformer(self.X[idx])
             except TypeError:
                 self.X[idx] = self.X[idx]
         elif self.img_inp_type == 'image_array':
             try:
-                print(self.X)
                 print(type(self.X))
                 self.X[idx] = torch.from_numpy(self.X[idx])
             except TypeError:
