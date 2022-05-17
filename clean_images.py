@@ -18,10 +18,9 @@ from skimage.transform import rescale, resize
 from PIL import Image
 
 class CleanImages(CleanData):
-    def __init__(self, tab_names='images') -> None:
+    def __init__(self, tab_names=['Images']) -> None:
         super().__init__(tab_names)
-        print(self.tab_names)
-        print(self.df.head())
+        self.df = self.table_dict[tab_names[0]].copy()
         self.csv_df = None
 
     def img_clean_pil(self, size = 512, mode = 'RGB'):
@@ -76,7 +75,7 @@ class CleanImages(CleanData):
         return self.image_frame
     
     def to_excel(self, df):
-        df.to_excel(Path(Path.cwd(), 'test_file','Cleaned_Images.xlsx'), sheet_name = 'images')
+        df.to_excel(Path(Path.cwd(), 'data_files','Cleaned_Images.xlsx'), sheet_name = 'images')
 
     def merge_images(self):
         self.df.rename({'id': 'image_id', 'product_id': 'id'}, axis=1, inplace=True)

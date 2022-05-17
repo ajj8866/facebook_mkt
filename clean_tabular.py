@@ -13,27 +13,23 @@ from sklearn.preprocessing import LabelEncoder
 from matplotlib.gridspec import GridSpec
 
 class CleanData:
-    def __init__(self, tab_names = 'products_2') -> None:
+    def __init__(self, tab_names = ['Products']) -> None:
         self.tab_names = tab_names
-        self.con = aws_rds()[1]
-        if 'test_file' not in os.listdir():
-            os.mkdir(Path(Path.cwd(), 'test_file'))
-        if isinstance(tab_names, str):
-            self.df = pd.read_sql_table(table_name=tab_names, con=self.con)
-            if 'price' in self.df.columns:
-                self.df.dropna(inplace=True)
-                self.df['price'] = self.df['price'].str.replace('£', '').astype(np.float32)
-                self.df = self.df[np.round(self.df['price']) != 0]
-        else:
-            self.table_dict = {}
-            for table in tab_names:
-                self.table_dict[table] = pd.read_sql_table(table_name=table, con= self.con)
-                self.table_dict[table].dropna(inplace = True)
-                if 'price' in self.table_dict[table].columns:
-                    self.table_dict[table]['price'] = self.table_dict[table][self.table_dict[table]['price'] != 'N/A'.strip()]['price']
-                    print(self.table_dict[table].head())
-                    self.table_dict[table]['price'] = self.table_dict[table]['price'].str.replace(',', '').str.strip('£').str.strip(' ').astype(np.float32)
-                    self.table_dict[table] = self.table_dict[table][np.round(self.table_dict[table]['price']) != 0]
+        if 'data_files' not in os.listdir():
+            os.mkdir(Path(Path.cwd(), 'data_files'))
+        self.table_dict = {}
+        for table in tab_names:
+            self.table_dict[table] = pd.read_json(Path(Path.cwd(),'data_files', table+'.json'))
+            self.table_dict[table].dropna(inplace = True)
+            if 'price' in self.table_dict[table].columns:
+                self.table_dict[table]['price'] = self.table_dict[table][self.table_dict[table]['price'] != 'N/A'.strip()]['price']
+                print(self.table_dict[table].head())
+                self.table_dict[table]['price'] = self.table_dict[table]['price'].str.replace(',', '').str.strip('£').str.strip(' ').astype(np.float32)
+                self.table_dict[table] = self.table_dict[table][np.round(self.table_dict[table]['price']) != 0]
+            if 'category' in self.table_dict[table].columns:
+                self.expand_category(df=table)
+                self.table_dict[table] = self.table_dict[table][self.table_dict[table]['major_category'] != 'N'.strip()]
+
     
     def try_merge(self, df_list):
         '''
@@ -54,6 +50,7 @@ class CleanData:
         return self.table_dict['combined']
     
     def get_na_vals(self, df):
+        print(f'The following NA values exist if dataframe {df}')
         return self.table_dict[df][self.table_dict[df].isna().any(axis=1)]
 
     def __repr__(self) -> str:
@@ -68,11 +65,11 @@ class CleanData:
 
     def to_excel(self):
         for i, j in self.table_dict.items():
-            ex_writer = pd.ExcelWriter(f'test_file/{i}.xlsx', engine='xlsxwriter')
+            ex_writer = pd.ExcelWriter(f'data_files/{i}.xlsx', engine='xlsxwriter')
             with ex_writer as writer:
                 j.to_excel(writer, sheet_name=i)
     
-    def expand_category(self, df = 'combined'):
+    def expand_category(self, df = 'Products'):
         self.major_encoder = LabelEncoder()
         self.minor_encoder = LabelEncoder()
         self.table_dict[df]['major_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[0])
@@ -89,7 +86,7 @@ class CleanData:
             category_dict[major_minor].inverse_transform(input_array.numpy())
     
     
-    def sum_by_cat(self, df= 'combined', quant = 0.95):
+    def sum_by_cat(self, df= 'Products', quant = 0.95):
         data = self.expand_category(df)
         major = data.groupby('major_category')['price'].describe()
         print('Price Statistics Grouped by Major Category')
@@ -107,14 +104,19 @@ class CleanData:
             sns.boxplot(data=prod_plot[prod_plot['price']<prod_plot['price'].quantile([quant][0])], x = 'major_category', y = 'price')
             plt.show()
 
-    def trim_data(self, df= 'combined', quant = 0.95):
+    def trim_data(self, df= 'Products', quant = 0.95):
         self.table_dict[df] = self.table_dict[df][self.table_dict[df]['price'] > self.table_dict[df]['price'].quantile([quant])]
+        return self.table_dict[df]
 
     @classmethod
     def allTables(cls):
-        engine = aws_rds()[0]
-        inspector = inspect(engine)
-        return cls(tab_names = inspector.get_table_names())
+        json_list = []
+        json_regex = re.compile(r'(.*).json$')
+        for i in os.listdir(Path(Path.cwd(), 'data_files')):
+            if re.search(json_regex, i) is not None:
+                json_list.append(re.search(json_regex, i).group(1))
+        print(json_list)
+        return cls(tab_names = json_list)
     
 ##########################################################################################################################################
 ##########################################################################################################################################
@@ -124,12 +126,6 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', 40)
     data_class = CleanData.allTables()
     print(data_class)
-    data_class.try_merge(df_list=['products', 'products_2'])
-    data_class.get_na_vals(df='combined')
-    data_class.expand_category()
+    data_class.get_na_vals(df='Images')
     data_class.sum_by_cat()
     data_class.to_excel()
-    print('#'*20)
-    print(data_class.table_dict['combined'].head())
-    print('#'*20)
-

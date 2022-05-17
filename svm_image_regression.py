@@ -31,13 +31,12 @@ if __name__ == '__main__':
     img_size = 128
     '''Getting images dataframe'''
     image_class = CleanImages()
-    image_df = image_class.total_clean(size=img_size)
+    image_df = image_class.total_clean(size=img_size, mode='L')
 
     '''Getting product data'''
-    product_class = CleanData(tab_names=['products', 'products_2'])
-    product_class.try_merge(['products', 'products_2'])
-    product_class.get_na_vals(df='combined')
-    products_df = product_class.expand_category()
+    product_class = CleanData(tab_names=['Products'])
+    product_class.get_na_vals(df='Products')
+    products_df = product_class.table_dict['Products']
 
     '''Dataframe diagnostics'''
     print('\n')
@@ -58,7 +57,7 @@ if __name__ == '__main__':
     merged_df = image_df.merge(products_df, left_on='id', right_on='id')
     print(merged_df.head())
     print(merged_df.info())
-    merged_df.to_excel(Path(Path.cwd(), 'test_file', 'Final_Data.xlsx'))
+    merged_df.to_excel(Path(Path.cwd(), 'data_files', 'Final_Data_new.xlsx'))
     print(len(merged_df))
 
     ''' Dataset Preprocessing'''
@@ -73,6 +72,8 @@ if __name__ == '__main__':
     print('\n')
     print('List of possible categories for classification')
     print('\n'.join([f'{i}) {j}' for i, j in enumerate(category_list, start=1)]))
+    print(X.shape)
+    print(y.shape)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     '''Setting up GridSearchCV'''
@@ -92,7 +93,7 @@ if __name__ == '__main__':
     y_pred = model.predict(X_test)
 
     '''Model Prediction Evaluation'''
-    print('Accuracy score: ', accuracy_score(y_test, y_pred))
+    print('Accuracy score: ', f'{accuracy_score(y_test, y_pred)*100:.2f}%')
     confusion_matrix(y_test, y_pred)
     sns.heatmap(confusion_matrix(y_test, y_pred), annot=True)
     plt.show()

@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 4):
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 3):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -75,13 +75,17 @@ if __name__ == '__main__':
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
+                        print('\n'*4)
+                        print('#'*20)
+                        print('Next input')
+                        print(inputs)
                         print('#'*20)
                         print('Next output')
-                        print('\n'*2)
                         outputs = model(inputs)
                         print(outputs)
                         print(outputs.shape)
                         _, preds = torch.max(outputs, 1)
+                    
                         loss = loss_type(outputs, labels)
 
                         if phase == 'train':

@@ -30,10 +30,9 @@ class Dataset(torch.utils.data.Dataset):
         image_df = image_class.total_clean(size=img_size, normalize=True, mode='RGB').copy()
 
         '''Yielding product dataset from CleanData python script'''
-        product_class = CleanData(tab_names=['products', 'products_2'])
-        product_class.try_merge(['products', 'products_2'])
-        product_class.get_na_vals(df='combined')
-        products_df = product_class.expand_category().copy()
+        product_class = CleanData(tab_names=['Products'])
+        product_class.get_na_vals(df='Products')
+        products_df = product_class.table_dict['Products'].copy()
 
         '''Merging both the previous dataset to link image with associated product category '''
         merged_df = image_df.merge(products_df, left_on='id', right_on='id')
