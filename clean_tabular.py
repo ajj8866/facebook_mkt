@@ -81,6 +81,14 @@ class CleanData:
         self.table_dict[df]['minor_category_encoded'] = self.minor_encoder.fit_transform(self.table_dict[df]['minor_category'])
         return self.table_dict[df]
     
+    def inverse_transform(self, input_array, major_minor = 'major'):
+        category_dict = {'major': self.major_encoder, 'minor': self.minor_encoder}
+        try:
+            category_dict[major_minor].inverse_transform(input_array)
+        except TypeError:
+            category_dict[major_minor].inverse_transform(input_array.numpy())
+    
+    
     def sum_by_cat(self, df= 'combined', quant = 0.95):
         data = self.expand_category(df)
         major = data.groupby('major_category')['price'].describe()

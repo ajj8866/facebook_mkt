@@ -16,7 +16,7 @@ from torch import nn
 from pathlib import Path
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=128, train_end = 10000, is_test = False):
+    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=128, train_proportion = 0.8, is_test = False):
         '''
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
@@ -39,6 +39,7 @@ class Dataset(torch.utils.data.Dataset):
         merged_df = image_df.merge(products_df, left_on='id', right_on='id')
         filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
         filtered_df.dropna(inplace=True)
+        train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
             filtered_df = filtered_df.iloc[:train_end]
         else:

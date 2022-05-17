@@ -32,12 +32,13 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
+    train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-    train_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=False)
+    train_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=False, train_proportion=train_prop)
 
     test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-    test_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=True)
+    test_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=True, train_proportion=train_prop)
 
     batch_size = 20
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
@@ -46,14 +47,16 @@ if __name__ == '__main__':
     optimizer =  optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
-    train_size = 10000
-    test_size = 2424
+    train_size = train_dataset.dataset_sub_size
+    test_size = test_dataset.dataset_sub_size
+    print(train_size)
+    print(test_size)
     dataset_size = {'train': train_size, 'eval': test_size}
 
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 2):
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 4):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -74,7 +77,7 @@ if __name__ == '__main__':
                     with torch.set_grad_enabled(phase == 'train'):
                         print('#'*20)
                         print('Next output')
-                        print('\n*2')
+                        print('\n'*2)
                         outputs = model(inputs)
                         print(outputs)
                         print(outputs.shape)
@@ -99,7 +102,7 @@ if __name__ == '__main__':
                     print(f'Best val Acc: {best_accuracy:.4f}')
         model.load_state_dict(best_model_weights)
         time_diff = time.time()-start
-        print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60)*60} seconds')
+        print(f'Time taken for model to run: {(time_diff//60)} minutes and {((time_diff%60)/100)*60} seconds')
         return model
 
     #model_tr = train_model()
@@ -117,7 +120,7 @@ if __name__ == '__main__':
     # writer = SummaryWriter()
     # writer.add_image('test_run', img_grid)
     
-    torchbearer_trial = Trial(model=model, optimizer=optimizer, criterion=criterion, metrics=['acc'], callbacks=[TensorBoard(write_graph=True, write_batch_metrics=False, write_epoch_metrics=False)])
+    torchbearer_trial = Trial(model=model, optimizer=optimizer, criterion=criterion, metrics=['acc'], callbacks=[TensorBoard(write_graph=False, write_batch_metrics=True, write_epoch_metrics=False)])
     torchbearer_trial.with_generators(train_generator=train_loader, val_generator=test_loader)
     torchbearer_trial.run(epochs=1)
 
