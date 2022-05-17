@@ -10,3 +10,12 @@ mnist
 t10k*
 train-labels*
 train-images*
+image_class_ml.ipynb
+pytorch_img_classifier.ipynb
+tab_data.csv
+train_test.csv
+trains_test.xlsx
+*.xlsx
+runs
+excel_sk.ipynb
+

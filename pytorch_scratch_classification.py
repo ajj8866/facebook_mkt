@@ -45,6 +45,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             filtered_df = filtered_df.iloc[train_end:]
         self.dataset_size = len(filtered_df)
+        self.dataset_sub_size = train_end if is_test == False else len(filtered_df) - train_end
         print('Total observations in remaining dataset: ', len(filtered_df))
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values
