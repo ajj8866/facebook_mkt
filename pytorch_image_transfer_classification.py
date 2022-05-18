@@ -13,6 +13,7 @@ import multiprocessing
 import torchvision
 from torchbearer import Trial
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim import lr_scheduler
 from torchvision.transforms import Normalize, ToPILImage, ToTensor
 from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
@@ -31,6 +32,7 @@ if __name__ == '__main__':
     for param in model.parameters():
         param.requires_grad = False
     
+    opt = optim.SGD
     model.fc = nn.Linear(in_features=2048, out_features=14, bias=True)
     train_prop = 0.8
 
@@ -40,11 +42,12 @@ if __name__ == '__main__':
     test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
     test_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=True, train_proportion=train_prop)
 
-    batch_size = 20
+    batch_size = 32
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
-    optimizer =  optim.Adam(model.parameters(), lr=0.001)
+    optimizer =  opt(model.parameters(), lr=0.01)
+    scheduler = lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
     train_size = train_dataset.dataset_size
@@ -81,7 +84,7 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 3):
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 3, mode_scheduler = scheduler):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -101,34 +104,34 @@ if __name__ == '__main__':
 
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = model(inputs)
+                        outputs = torch.softmax(outputs, dim=1)
+
                         _, preds = torch.max(outputs, 1)
+                        print(preds)
+                
                         loss = loss_type(outputs, labels)
-                        # print('\n')
-                        # print(loss)
-                        # print(loss.shape)
-                        # print('Input size(0)')
-                        # print(inputs.size(0))
-                        # print(preds)
-                        # print(preds.shape)
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
-                    
+
                     running_loss = running_loss + loss.item()*inputs.size(0)
                     running_corrects = running_corrects + preds.argmax(dim=0).eq(labels).sum()
+
 
                     '''Writer functions for batch'''
                     writer.add_scalar(f'Running loss for phase {phase}', running_loss, batch_num)
                     writer.add_scalar(f'Running corrects for phase {phase}', running_corrects, batch_num)
                     writer.add_scalar(f'Running accuracy for phase {phase}', running_corrects/dataset_size[phase], batch_num)
 
+                if phase=='train':
+                    mode_scheduler.step()
 
                 '''Writer functions for epoch'''
                 epoch_loss = running_loss / dataset_size[phase]
                 epoch_acc = running_corrects / dataset_size[phase]
-                writer.add_scalar(f'Running loss for epoch phase {phase}', epoch_loss, epoch)
                 writer.add_scalar(f'Running corrects for epoch phase {phase}', epoch_acc, epoch)
                 print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+                writer.add_scalar(f'Running loss for epoch phase {phase}', epoch_loss, epoch)
 
                 if phase == 'eval' and epoch_acc > best_accuracy:
                     best_accuracy = epoch_acc
