@@ -83,7 +83,7 @@ class CleanImages(CleanData):
         print(self.final_df.head())
         return self.final_df
 
-    def total_clean(self, normalize=True, mode = 'RGB', size = 128):
+    def total_clean(self, normalize=True, mode = 'RGB', size = 224):
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
         self.merge_images()
@@ -108,8 +108,9 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
     cl = CleanImages()
-    print(cl)
     cl.total_clean()
     cl.to_excel(cl.final_df)
     print(cl.final_df.head())
     cl.describe_data(cl.final_df)
+    print(cl)
+

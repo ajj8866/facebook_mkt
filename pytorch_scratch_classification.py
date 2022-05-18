@@ -16,7 +16,7 @@ from torch import nn
 from pathlib import Path
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=128, train_proportion = 0.8, is_test = False):
+    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):
         '''
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
@@ -45,6 +45,7 @@ class Dataset(torch.utils.data.Dataset):
             filtered_df = filtered_df.iloc[train_end:]
         self.dataset_size = len(filtered_df)
         self.dataset_sub_size = train_end if is_test == False else len(filtered_df) - train_end
+        print('Train/test size',self.dataset_sub_size)
         print('Total observations in remaining dataset: ', len(filtered_df))
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values

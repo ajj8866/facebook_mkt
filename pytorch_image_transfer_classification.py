@@ -12,7 +12,7 @@ from PIL import Image
 import multiprocessing
 import torchvision
 from torchbearer import Trial
-from torch.utils.tensorboard.writer import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import Normalize, ToPILImage, ToTensor
 from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     for param in model.parameters():
         param.requires_grad = False
     
-    model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
+    model.fc = nn.Linear(in_features=2048, out_features=14, bias=True)
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -79,13 +79,15 @@ if __name__ == '__main__':
                         print('#'*20)
                         print('Next input')
                         print(inputs)
+                        print(inputs.shape)
                         print('#'*20)
                         print('Next output')
                         outputs = model(inputs)
                         print(outputs)
                         print(outputs.shape)
                         _, preds = torch.max(outputs, 1)
-                    
+                        print(labels)
+                        print(labels.shape)
                         loss = loss_type(outputs, labels)
 
                         if phase == 'train':
@@ -106,11 +108,12 @@ if __name__ == '__main__':
                     print(f'Best val Acc: {best_accuracy:.4f}')
         model.load_state_dict(best_model_weights)
         time_diff = time.time()-start
-        print(f'Time taken for model to run: {(time_diff//60)} minutes and {((time_diff%60)/100)*60} seconds')
+        print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
-    #model_tr = train_model()
+    model_tr = train_model()
     
+
     def show_image(input_ten_orig):
         input_ten = torch.clone(input_ten_orig)
         inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
@@ -118,15 +121,30 @@ if __name__ == '__main__':
         input_ten = inv_normalize(input_ten)
         plt.imshow(np.transpose(input_ten.numpy(), (1, 2, 0)))
 
+    def images_to_proba(input_arr, model = model):
+        output = model(input_arr)
+        _, predicted_tensor = torch.max(output, 1)
+        preds = np.squeeze(predicted_tensor.numpy())
+        return preds, [F.softmax(out, dim=0)[pred_val].item() for pred_val, out in zip(preds, output)]
+
+    def plot_classes_preds(input_arr, lab, model = model):
+        preds, proba = images_to_proba(model, input_arr)
+        fig = plt.figure(figsize=(12, 48))
+        for i in range(4):
+            ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])
+            show_image(input_arr[i])
+        return fig
     # train_iterator = iter(train_loader)
     # img, label = train_iterator.next()
     # img_grid = torchvision.utils.make_grid(img)
     # writer = SummaryWriter()
     # writer.add_image('test_run', img_grid)
     
-    torchbearer_trial = Trial(model=model, optimizer=optimizer, criterion=criterion, metrics=['acc'], callbacks=[TensorBoard(write_graph=False, write_batch_metrics=True, write_epoch_metrics=False)])
-    torchbearer_trial.with_generators(train_generator=train_loader, val_generator=test_loader)
-    torchbearer_trial.run(epochs=1)
+    # torchbearer_trial = Trial(model=model, optimizer=optimizer, criterion=criterion, metrics=['acc'], callbacks=[TensorBoard(write_graph=False, write_batch_metrics=True, write_epoch_metrics=False)])
+    # torchbearer_trial.with_generators(train_generator=train_loader, val_generator=test_loader)
+    # torchbearer_trial.run(epochs=1)
+
+    
 
     
 

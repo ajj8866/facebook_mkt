@@ -28,7 +28,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_colwidth', 400)
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
-    img_size = 128
+    img_size = 224
     '''Getting images dataframe'''
     image_class = CleanImages()
     image_df = image_class.total_clean(size=img_size, mode='L')

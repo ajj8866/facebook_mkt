@@ -69,6 +69,9 @@ class CleanData:
             with ex_writer as writer:
                 j.to_excel(writer, sheet_name=i)
     
+    def cat_set(self, df = 'Products',cat_col = 'major_category'):
+        return self.table_dict[df][cat_col].nunique()
+    
     def expand_category(self, df = 'Products'):
         self.major_encoder = LabelEncoder()
         self.minor_encoder = LabelEncoder()
@@ -128,4 +131,4 @@ if __name__ == '__main__':
     print(data_class)
     data_class.get_na_vals(df='Images')
     data_class.sum_by_cat()
-    data_class.to_excel()
+    print(data_class.cat_set())
