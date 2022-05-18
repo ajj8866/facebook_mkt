@@ -47,11 +47,36 @@ if __name__ == '__main__':
     optimizer =  optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
-    train_size = train_dataset.dataset_sub_size
-    test_size = test_dataset.dataset_sub_size
+    train_size = train_dataset.dataset_size
+    test_size = test_dataset.dataset_size
     print(train_size)
     print(test_size)
     dataset_size = {'train': train_size, 'eval': test_size}
+
+    writer = SummaryWriter()
+
+    '''Tensorboard Function for Showing Images'''
+    def show_image(input_ten_orig):
+        input_ten = torch.clone(input_ten_orig)
+        inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
+        inv_normalize = transforms.Compose([inv_normalize_array])
+        input_ten = inv_normalize(input_ten)
+        plt.imshow(np.transpose(input_ten.numpy(), (1, 2, 0)))
+
+    '''Function for comparing actual images to predicted images in Tensorboard'''
+    def images_to_proba(input_arr, model = model): #Stub function used in plot_classes_preds to 
+        output = model(input_arr)
+        _, predicted_tensor = torch.max(output, 1)
+        preds = np.squeeze(predicted_tensor.numpy())
+        return preds, [F.softmax(out, dim=0)[pred_val].item() for pred_val, out in zip(preds, output)]
+
+    def plot_classes_preds(input_arr, lab, model = model):
+        preds, proba = images_to_proba(model, input_arr)
+        fig = plt.figure(figsize=(12, 48))
+        for i in range(4):
+            ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])
+            show_image(input_arr[i])
+        return fig
 
 
 
@@ -71,69 +96,56 @@ if __name__ == '__main__':
                 running_loss = 0
                 running_corrects = 0
 
-                for inputs, labels in data_loader_dict[phase]:
+                for batch_num, (inputs, labels) in enumerate(data_loader_dict[phase], start=1):
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
-                        print('\n'*4)
-                        print('#'*20)
-                        print('Next input')
-                        print(inputs)
-                        print(inputs.shape)
-                        print('#'*20)
-                        print('Next output')
                         outputs = model(inputs)
-                        print(outputs)
-                        print(outputs.shape)
                         _, preds = torch.max(outputs, 1)
-                        print(labels)
-                        print(labels.shape)
                         loss = loss_type(outputs, labels)
-
+                        # print('\n')
+                        # print(loss)
+                        # print(loss.shape)
+                        # print('Input size(0)')
+                        # print(inputs.size(0))
+                        # print(preds)
+                        # print(preds.shape)
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
                     
                     running_loss = running_loss + loss.item()*inputs.size(0)
-                    running_corrects = running_corrects + torch.sum(preds == labels.data)
+                    running_corrects = running_corrects + preds.argmax(dim=0).eq(labels).sum()
 
+                    '''Writer functions for batch'''
+                    writer.add_scalar(f'Running loss for phase {phase}', running_loss, batch_num)
+                    writer.add_scalar(f'Running corrects for phase {phase}', running_corrects, batch_num)
+                    writer.add_scalar(f'Running accuracy for phase {phase}', running_corrects/dataset_size[phase], batch_num)
+
+
+                '''Writer functions for epoch'''
                 epoch_loss = running_loss / dataset_size[phase]
-                epoch_acc = running_corrects.double() / dataset_size[phase]
-
+                epoch_acc = running_corrects / dataset_size[phase]
+                writer.add_scalar(f'Running loss for epoch phase {phase}', epoch_loss, epoch)
+                writer.add_scalar(f'Running corrects for epoch phase {phase}', epoch_acc, epoch)
                 print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
                 if phase == 'eval' and epoch_acc > best_accuracy:
                     best_accuracy = epoch_acc
                     best_model_weights = copy.deepcopy(model.state_dict())
                     print(f'Best val Acc: {best_accuracy:.4f}')
+
         model.load_state_dict(best_model_weights)
         time_diff = time.time()-start
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
     model_tr = train_model()
-    
 
-    def show_image(input_ten_orig):
-        input_ten = torch.clone(input_ten_orig)
-        inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
-        inv_normalize = transforms.Compose([inv_normalize_array])
-        input_ten = inv_normalize(input_ten)
-        plt.imshow(np.transpose(input_ten.numpy(), (1, 2, 0)))
 
-    def images_to_proba(input_arr, model = model):
-        output = model(input_arr)
-        _, predicted_tensor = torch.max(output, 1)
-        preds = np.squeeze(predicted_tensor.numpy())
-        return preds, [F.softmax(out, dim=0)[pred_val].item() for pred_val, out in zip(preds, output)]
 
-    def plot_classes_preds(input_arr, lab, model = model):
-        preds, proba = images_to_proba(model, input_arr)
-        fig = plt.figure(figsize=(12, 48))
-        for i in range(4):
-            ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])
-            show_image(input_arr[i])
-        return fig
+
+
     # train_iterator = iter(train_loader)
     # img, label = train_iterator.next()
     # img_grid = torchvision.utils.make_grid(img)
