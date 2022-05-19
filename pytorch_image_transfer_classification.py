@@ -46,7 +46,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
-    optimizer =  opt(model.parameters(), lr=0.01)
+    optimizer =  opt(model.parameters(), lr=0.1)
     scheduler = lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
@@ -107,12 +107,15 @@ if __name__ == '__main__':
                         outputs = torch.softmax(outputs, dim=1)
 
                         _, preds = torch.max(outputs, 1)
-                        print(preds)
                 
                         loss = loss_type(outputs, labels)
+                        print(loss)
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
+                            print('State Dictionary for Optimiser')
+                            for opt_param in optimizer.state_dict():
+                                print(opt_param, '\t', optimizer.state_dict()[opt_param])
 
                     running_loss = running_loss + loss.item()*inputs.size(0)
                     running_corrects = running_corrects + preds.argmax(dim=0).eq(labels).sum()
@@ -137,8 +140,15 @@ if __name__ == '__main__':
                     best_accuracy = epoch_acc
                     best_model_weights = copy.deepcopy(model.state_dict())
                     print(f'Best val Acc: {best_accuracy:.4f}')
+                
+                print('State Dictoinary for Model')
+                for param in model.state_dict():
+                    print(param, '\t', model.state_dict()[param].size())
+                print('\n')
+
 
         model.load_state_dict(best_model_weights)
+        torch.save(model.state_dict(), 'image_model.pt')
         time_diff = time.time()-start
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
