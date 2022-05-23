@@ -107,24 +107,28 @@ if __name__ == '__main__':
                         outputs = torch.softmax(outputs, dim=1)
 
                         _, preds = torch.max(outputs, 1)
-                
+                        print('\n')
+                        print(f'Prediction for bathc {batch_num}')
+                        print(preds)
+                        print(torch.max(outputs, 1))
+
                         loss = loss_type(outputs, labels)
-                        print(loss)
+                        # print(loss)
                         if phase == 'train':
                             loss.backward() #Calculates gradients
-                            optimizer.step()
-                            print('State Dictionary for Optimiser')
-                            for opt_param in optimizer.state_dict():
-                                print(opt_param, '\t', optimizer.state_dict()[opt_param])
+                            # optimizer.step()
+                            # print('State Dictionary for Optimiser')
+                            # for opt_param in optimizer.state_dict():
+                            #     print(opt_param, '\t', optimizer.state_dict()[opt_param])
 
                     running_loss = running_loss + loss.item()*inputs.size(0)
                     running_corrects = running_corrects + preds.argmax(dim=0).eq(labels).sum()
 
 
                     '''Writer functions for batch'''
-                    writer.add_scalar(f'Running loss for phase {phase}', running_loss, batch_num)
-                    writer.add_scalar(f'Running corrects for phase {phase}', running_corrects, batch_num)
-                    writer.add_scalar(f'Running accuracy for phase {phase}', running_corrects/dataset_size[phase], batch_num)
+                    writer.add_scalar(f'Running corrects for phase {phase}', preds.argmax(dim=0).eq(labels).sum(), batch_num)
+                    writer.add_scalar(f'Running loss for phase {phase}', loss.item()*inputs.size(0)/batch_size, batch_num)
+                    writer.add_scalar(f'Running accuracy for phase {phase}', preds.argmax(dim=0).eq(labels).sum()/batch_size, batch_num)
 
                 if phase=='train':
                     mode_scheduler.step()
