@@ -126,30 +126,44 @@ if __name__ == '__main__':
     mod_optimizer = opt(model.parameters(), lr=0.001)
     writer = SummaryWriter()
 
-    for epoch in range(3):
-        tot = 0
-        cor = 0
+    for epoch in range(15):
+        running_train_correct = 0
+        running_train_loss = 0
         model.train()
         for bch, (inp, lab) in enumerate(train_loader, start=1):
             mod_optimizer.zero_grad()
             outputs = model(inp)
-            loss = criterion(outputs, lab)
-            print(loss)
-            loss.backward()
+            batch_loss = criterion(outputs, lab)
+            train_corrects = torch.argmax(outputs, dim=1).eq(lab).sum()
+            writer.add_scalar('Training accuracy for batch', train_corrects/batch_size, bch)
+            writer.add_scalar('Training loss for batch', batch_loss.item()/batch_size, bch)
+            running_train_loss = running_train_loss + batch_loss.item()
+            running_train_correct = running_train_correct + train_corrects
+            batch_loss.backward()
             mod_optimizer.step()
+        
+        writer.add_scalar('Training accuracy by epoch', running_train_correct/train_size, epoch)
+        writer.add_scalar('Average training loss by epocy', running_train_loss/train_size, epoch)
         
 
         model.eval()
+        running_test_correct = 0
+        running_test_loss = 0
+        label_ls = []
         for bch, (inp_tst, lab_tst) in enumerate(test_loader, start=1):
-            eval_cor = 0
             out_tst = model(inp_tst)
-            pred = torch.max(out_tst.data, 1)
+            pred = torch.argmax(out_tst, dim=1)
+            test_loss = criterion(out_tst, lab_tst)
+            eval_corr = pred.eq(lab_tst).sum()
+            running_test_correct = running_test_correct + eval_corr
             pred_list.append(pred)
-            tot += lab_tst.size(*0)
-            cor += (pred==lab_tst).sum()
-            writer.add_scalar(f'Accuracy for evaluation phase and epoch {epoch}', eval_cor/batch_size, bch)
+            label_ls.append(lab_tst)
+            running_test_loss = running_test_loss + test_loss.item()
+            writer.add_scalar('Average evaluation loss by batch number', test_loss.item()/batch_size, bch)
+            writer.add_scalar('Evaluation accuracy by batch number', eval_corr/batch_size, bch)
         
-        writer.add_scalar(f'Accuracy for evaluation phase epoch', eval_cor/test_size, bch)
+        writer.add_scalar('Average loss for evaluation phase by epoch ', running_test_loss/test_size, epoch)
+        writer.add_scalar(f'Accuracy for evaluation phase epoch', eval_corr/test_size, epoch)
     
 
     print(pred_list)
