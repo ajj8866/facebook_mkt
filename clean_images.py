@@ -63,9 +63,9 @@ class CleanImages(CleanData):
                 image_array.append(image)
                 img_dim_list.append(image.shape)
                 if len(image.shape) == 3:
-                    print(im)
                     img_num_features.append(image.shape[2])
                 else:
+                    print(im)
                     img_num_features.append(1)
                 img_channels.append(len(image.shape))
                 img_mode.append(Image.open(im).mode)

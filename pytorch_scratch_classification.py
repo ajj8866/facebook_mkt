@@ -1,3 +1,4 @@
+from operator import mod
 import pandas as pd
 from clean_images import CleanImages
 from clean_tabular import CleanData
@@ -11,6 +12,7 @@ import re
 from PIL import Image
 import multiprocessing
 from torchvision.transforms import Normalize, ToPILImage, ToTensor
+from torch.utils.tensorboard import SummaryWriter
 from torch.nn import Module
 from torch import nn
 from pathlib import Path
@@ -76,21 +78,78 @@ class Net(nn.Module):
     def __init__(self, num_features=13): #,  pool1 = 2, pool2 =2, pool3 =2):
         super(Net, self).__init__()
         ''' Features (Convolution and Pooling) '''
-        self.features = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=2),
+        self.features = nn.Sequential(nn.Conv2d(in_channels=3, out_channels=16, kernel_size=2),
         nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
         '''Classification '''
-        self.classifier = nn.Sequential(nn.Linear(32*32*64, 1000), #dimensions[0][0]*dimensions[0][1]/(2*2)
+        self.classifier = nn.Sequential(nn.Linear(111*111*16, 1000), #dimensions[0][0]*dimensions[0][1]/(2*2)
         nn.ReLU(inplace=True), nn.Dropout(0.5), nn.Linear(1000, 2000), nn.ReLU(inplace=True), 
         nn.Linear(2000, num_features))
         
     def forward(self, x):
         #print(self.dimensions)
         x = self.features(x)
-        x = x.reshape(-1, 16*63*63)
+        print(x.shape)
+        x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
 
+if __name__ == '__main__':
+    tot = 0
+    cor = 0
+    pred_list = []
+    opt = torch.optim.SGD
+    model = Net(num_features=14)
+    train_prop = 0.8
+
+    train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+    train_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=False, train_proportion=train_prop)
+
+    test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+    test_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=True, train_proportion=train_prop)
+
+    batch_size = 32
+    train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
+    data_loader_dict = {'train': train_loader, 'eval': test_loader}
+    optimizer =  opt(model.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
+    criterion = nn.CrossEntropyLoss()
+
+    train_size = train_dataset.dataset_size
+    test_size = test_dataset.dataset_size
+    print(train_size)
+    print(test_size)
+    dataset_size = {'train': train_size, 'eval': test_size}
+
+    mod_optimizer = opt(model.parameters(), lr=0.001)
+    writer = SummaryWriter()
+
+    for epoch in range(3):
+        tot = 0
+        cor = 0
+        model.train()
+        for bch, (inp, lab) in enumerate(train_loader, start=1):
+            mod_optimizer.zero_grad()
+            outputs = model(inp)
+            loss = criterion(outputs, lab)
+            print(loss)
+            loss.backward()
+            mod_optimizer.step()
         
+
+        model.eval()
+        for bch, (inp_tst, lab_tst) in enumerate(test_loader, start=1):
+            eval_cor = 0
+            out_tst = model(inp_tst)
+            pred = torch.max(out_tst.data, 1)
+            pred_list.append(pred)
+            tot += lab_tst.size(*0)
+            cor += (pred==lab_tst).sum()
+            writer.add_scalar(f'Accuracy for evaluation phase and epoch {epoch}', eval_cor/batch_size, bch)
+        
+        writer.add_scalar(f'Accuracy for evaluation phase epoch', eval_cor/test_size, bch)
     
+
+    print(pred_list)

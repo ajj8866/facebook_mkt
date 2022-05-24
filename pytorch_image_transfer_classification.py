@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 3, mode_scheduler = scheduler):
+    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 30, mode_scheduler = scheduler):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
                         _, preds = torch.max(outputs, 1)
                         print('\n')
-                        print(f'Prediction for bathc {batch_num}')
+                        print(f'Prediction for batch {batch_num}')
                         print(preds)
                         print(torch.max(outputs, 1))
 
@@ -120,15 +120,15 @@ if __name__ == '__main__':
                             # print('State Dictionary for Optimiser')
                             # for opt_param in optimizer.state_dict():
                             #     print(opt_param, '\t', optimizer.state_dict()[opt_param])
-
+                    print('Input size: ', inputs.shape)
                     running_loss = running_loss + loss.item()*inputs.size(0)
                     running_corrects = running_corrects + preds.argmax(dim=0).eq(labels).sum()
 
 
                     '''Writer functions for batch'''
-                    writer.add_scalar(f'Running corrects for phase {phase}', preds.argmax(dim=0).eq(labels).sum(), batch_num)
-                    writer.add_scalar(f'Running loss for phase {phase}', loss.item()*inputs.size(0)/batch_size, batch_num)
-                    writer.add_scalar(f'Running accuracy for phase {phase}', preds.argmax(dim=0).eq(labels).sum()/batch_size, batch_num)
+                    writer.add_scalar(f'Corrects for phase {phase}', preds.argmax(dim=0).eq(labels).sum(), batch_num)
+                    writer.add_scalar(f'Batch loss for phase {phase}', loss.item()*inputs.size(0)/batch_size, batch_num)
+                    writer.add_scalar(f'Batch accuracy for phase {phase}', preds.argmax(dim=0).eq(labels).sum()/batch_size, batch_num)
 
                 if phase=='train':
                     mode_scheduler.step()
@@ -136,9 +136,9 @@ if __name__ == '__main__':
                 '''Writer functions for epoch'''
                 epoch_loss = running_loss / dataset_size[phase]
                 epoch_acc = running_corrects / dataset_size[phase]
-                writer.add_scalar(f'Running corrects for epoch phase {phase}', epoch_acc, epoch)
+                writer.add_scalar(f'Accuracy for epoch phase {phase}', epoch_acc, epoch)
                 print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
-                writer.add_scalar(f'Running loss for epoch phase {phase}', epoch_loss, epoch)
+                writer.add_scalar(f'Loss for epoch phase {phase}', epoch_loss, epoch)
 
                 if phase == 'eval' and epoch_acc > best_accuracy:
                     best_accuracy = epoch_acc
