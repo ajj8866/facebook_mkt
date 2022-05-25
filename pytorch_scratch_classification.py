@@ -33,6 +33,9 @@ class Dataset(torch.utils.data.Dataset):
 
         '''Yielding product dataset from CleanData python script'''
         product_class = CleanData(tab_names=['Products'])
+        self.classes = product_class.major_map_encoder.keys()
+        self.encoded_class = product_class.major_map_encoder.values()
+        self.class_dict = product_class.major_map_encoder
         product_class.get_na_vals(df='Products')
         products_df = product_class.table_dict['Products'].copy()
 
@@ -115,6 +118,8 @@ if __name__ == '__main__':
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
     optimizer =  opt(model.parameters(), lr=0.1)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
+ #    StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
+
     criterion = nn.CrossEntropyLoss()
 
     train_size = train_dataset.dataset_size

@@ -1,3 +1,4 @@
+from turtle import color
 import pandas as pd
 from clean_images import CleanImages
 from clean_tabular import CleanData
@@ -33,21 +34,31 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     opt = optim.SGD
-    model.fc = nn.Linear(in_features=2048, out_features=14, bias=True)
+    model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
     train_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=False, train_proportion=train_prop)
+    classes = list(train_dataset.classes)
+    class_codes = train_dataset.encoded_class
+    class_encoder = train_dataset.class_dict
 
     test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
     test_dataset = Dataset(transformer=train_transformer, X='image', img_size=224, is_test=True, train_proportion=train_prop)
+
+    # test_classes = train_dataset.classes
+    # test_class_codes = train_dataset.encoded_class
+    # test_class_encoder = train_dataset.class_dict
+
 
     batch_size = 32
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
     optimizer =  opt(model.parameters(), lr=0.1)
-    scheduler = lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.1)
+    # lambda_scheduler = lambda epoch: epoch*0.8 if epoch<=16  else epoch*0.1
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=lambda_scheduler)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[4, 8, 12, 15, 20, 22], gamma=0.5) 
     criterion = nn.CrossEntropyLoss()
 
     train_size = train_dataset.dataset_size
@@ -55,6 +66,13 @@ if __name__ == '__main__':
     print(train_size)
     print(test_size)
     dataset_size = {'train': train_size, 'eval': test_size}
+
+    # print(train_classes == test_classes)
+    # print(train_class_codes == test_class_codes)
+    # print(train_class_encoder == test_class_encoder)
+    # print(train_classes)
+    # print(train_class_codes)
+    # print(train_class_encoder)
 
     writer = SummaryWriter()
 
@@ -68,6 +86,7 @@ if __name__ == '__main__':
 
     '''Function for comparing actual images to predicted images in Tensorboard'''
     def images_to_proba(input_arr, model = model): #Stub function used in plot_classes_preds to 
+        print(model)
         output = model(input_arr)
         _, predicted_tensor = torch.max(output, 1)
         preds = np.squeeze(predicted_tensor.numpy())
@@ -79,6 +98,7 @@ if __name__ == '__main__':
         for i in range(4):
             ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])
             show_image(input_arr[i])
+            ax.set_title('{0}, {1:.1f}%\n(label: {2})'.format(classes[preds[i]], proba[i]*100, classes[lab]), color=('green' if preds[i]==lab[i].item() else 'red'))
         return fig
 
 
@@ -110,13 +130,17 @@ if __name__ == '__main__':
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
+                            if batch_num%2==0:
+                                '''Writer functions for batch'''
+                                writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
+                                writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
+                                img_grid = torchvision.utils.make_grid(inputs)
+                                writer.add_image('Image of product', show_image(img_grid))
+                                # writer.add_figure('Predictions vs Labels', plot_classes_preds(model, input_arr=inputs, lab=labels))
+
 
                     running_corrects = running_corrects + preds.eq(labels).sum()
                     running_loss = running_loss + (loss.item()*inputs.size(0))
-
-                    '''Writer functions for batch'''
-                    writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
-                    writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
 
                 if phase=='train':
                     mode_scheduler.step()

@@ -39,8 +39,8 @@ class CleanImages(CleanData):
                 black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
                 black_back = black_back.convert(mode)
                 t += 1
-                print(t)
                 black_back.save(i)
+        print(t)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
     def img_clean_sk(self, normalize = False):
