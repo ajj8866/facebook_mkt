@@ -112,10 +112,10 @@ if __name__ == '__main__':
                             optimizer.step()
 
                     running_corrects = running_corrects + preds.eq(labels).sum()
-                    running_loss = running_loss + loss.item()
+                    running_loss = running_loss + (loss.item()*inputs.size(0))
 
                     '''Writer functions for batch'''
-                    writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item()/batch_size, batch_num)
+                    writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
                     writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
 
                 if phase=='train':
@@ -123,10 +123,11 @@ if __name__ == '__main__':
 
                 '''Writer functions for epoch'''
                 epoch_loss = running_loss / dataset_size[phase]
+                print(f'Size of dataset for phase {phase}', dataset_size[phase])
                 epoch_acc = running_corrects / dataset_size[phase]
-                writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_acc/dataset_size[phase], epoch)
+                writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_acc, epoch)
                 print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
-                writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss/dataset_size[phase], epoch)
+                writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss, epoch)
 
                 if phase == 'eval' and epoch_acc > best_accuracy:
                     best_accuracy = epoch_acc
