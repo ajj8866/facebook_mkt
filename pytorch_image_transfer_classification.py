@@ -34,7 +34,7 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     opt = optim.SGD
-    res_model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Dropout(0.5),nn.Linear(in_features=1024, out_features=512), nn.Dropout(0.5), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -135,9 +135,6 @@ if __name__ == '__main__':
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
-                                # img_grid = torchvision.utils.make_grid(inputs)
-                                # writer.add_image('Image of product', show_image(img_grid))
-                                # writer.add_figure('Predictions vs Labels', plot_classes_preds(model, input_arr=inputs, lab=labels))
 
                     if batch_num%10==0:
                         '''Writer functions for batch'''
