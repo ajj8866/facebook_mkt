@@ -29,12 +29,12 @@ import copy
 import time
 
 if __name__ == '__main__':
-    model = models.resnet50(pretrained=True)
-    for param in model.parameters():
+    res_model = models.resnet50(pretrained=True)
+    for param in res_model.parameters():
         param.requires_grad = False
     
     opt = optim.SGD
-    model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
+    res_model.fc = nn.Linear(in_features=2048, out_features=13, bias=True)
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
-    optimizer =  opt(model.parameters(), lr=0.1)
+    optimizer =  opt(res_model.parameters(), lr=0.1)
     # lambda_scheduler = lambda epoch: epoch*0.8 if epoch<=16  else epoch*0.1
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=lambda_scheduler)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[4, 8, 12, 15, 20, 22], gamma=0.5) 
@@ -79,37 +79,37 @@ if __name__ == '__main__':
     '''Tensorboard Function for Showing Images'''
     def show_image(input_ten_orig):
         input_ten = torch.clone(input_ten_orig)
-        print(1)
         inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
-        print(2)
         inv_normalize = transforms.Compose([inv_normalize_array])
-        print(3)
         input_ten = inv_normalize(input_ten)
         input_numpy = input_ten.numpy()
         plt.imshow(np.transpose(input_numpy, (1, 2, 0)))
-        plt.show()
+        # plt.show()
 
     '''Function for comparing actual images to predicted images in Tensorboard'''
-    def images_to_proba(input_arr, model = model): #Stub function used in plot_classes_preds to 
-        print(model)
-        output = model(input_arr)
+    def images_to_proba(input_arr, model = res_model): #Stub function used in plot_classes_preds to 
+        input_tensor = torch.clone(input_arr)
+        output = model(input_tensor)
         _, predicted_tensor = torch.max(output, 1)
         preds = np.squeeze(predicted_tensor.numpy())
         return preds, [F.softmax(out, dim=0)[pred_val].item() for pred_val, out in zip(preds, output)]
 
-    def plot_classes_preds(input_arr, lab, model = model):
-        preds, proba = images_to_proba(model, input_arr)
-        fig = plt.figure(figsize=(12, 48))
+    def plot_classes_preds(input_arr, lab, model = res_model):
+        preds, proba = images_to_proba(input_arr, model)
+        print(preds)
+        print(proba)
+        fig = plt.figure(figsize=(12, 12))
         for i in range(4):
             ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])
             show_image(input_arr[i])
-            ax.set_title('{0}, {1:.1f}%\n(label: {2})'.format(classes[preds[i]], proba[i]*100, classes[lab]), color=('green' if preds[i]==lab[i].item() else 'red'))
+            ax.set_title('{0}, {1:.1f}%\n(label: {2})'.format(classes[preds[i]], proba[i]*100, classes[lab[i]]), color=('green' if preds[i]==lab[i].item() else 'red')) #
+            plt.tight_layout()
         return fig
 
 
 
     'Model training and testing function'
-    def train_model(model=model, optimizer=optimizer, loss_type = criterion, num_epochs = 30, mode_scheduler = scheduler):
+    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 30, mode_scheduler = scheduler):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -141,6 +141,7 @@ if __name__ == '__main__':
 
                     if batch_num%10==0:
                         '''Writer functions for batch'''
+                        writer.add_figure('Predictions vs Actual',plot_classes_preds(input_arr=inputs, lab=labels, model=model))
                         writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
                         writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
 
