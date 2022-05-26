@@ -79,10 +79,15 @@ if __name__ == '__main__':
     '''Tensorboard Function for Showing Images'''
     def show_image(input_ten_orig):
         input_ten = torch.clone(input_ten_orig)
+        print(1)
         inv_normalize_array = transforms.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.255], std=[1/0.229, 1/0.224, 1/0.255])
+        print(2)
         inv_normalize = transforms.Compose([inv_normalize_array])
+        print(3)
         input_ten = inv_normalize(input_ten)
-        plt.imshow(np.transpose(input_ten.numpy(), (1, 2, 0)))
+        input_numpy = input_ten.numpy()
+        plt.imshow(np.transpose(input_numpy, (1, 2, 0)))
+        plt.show()
 
     '''Function for comparing actual images to predicted images in Tensorboard'''
     def images_to_proba(input_arr, model = model): #Stub function used in plot_classes_preds to 
@@ -130,14 +135,14 @@ if __name__ == '__main__':
                         if phase == 'train':
                             loss.backward() #Calculates gradients
                             optimizer.step()
-                            if batch_num%2==0:
-                                '''Writer functions for batch'''
-                                writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
-                                writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
-                                img_grid = torchvision.utils.make_grid(inputs)
-                                writer.add_image('Image of product', show_image(img_grid))
+                                # img_grid = torchvision.utils.make_grid(inputs)
+                                # writer.add_image('Image of product', show_image(img_grid))
                                 # writer.add_figure('Predictions vs Labels', plot_classes_preds(model, input_arr=inputs, lab=labels))
 
+                    if batch_num%10==0:
+                        '''Writer functions for batch'''
+                        writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
+                        writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
 
                     running_corrects = running_corrects + preds.eq(labels).sum()
                     running_loss = running_loss + (loss.item()*inputs.size(0))
