@@ -34,7 +34,7 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     opt = optim.SGD
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Dropout(0.5),nn.Linear(in_features=1024, out_features=512), nn.Dropout(0.5), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Dropout(0.2),nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
