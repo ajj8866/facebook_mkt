@@ -34,7 +34,7 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     opt = optim.SGD
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Dropout(0.2),nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -92,12 +92,22 @@ if __name__ == '__main__':
         output = model(input_tensor)
         _, predicted_tensor = torch.max(output, 1)
         preds = np.squeeze(predicted_tensor.numpy())
+        print('\n')
+        print('Softmax Output')
+        print(F.softmax(output[0], dim=0))
+        print(F.softmax(output[0], dim=0).shape)
+        print('#'*20)
+        print('Predcitions')
+        print(preds)
+        print(preds.shape)
+        print('#'*20)
+        print('Actual Output')
+        print(output)
+        print(output.shape)
         return preds, [F.softmax(out, dim=0)[pred_val].item() for pred_val, out in zip(preds, output)]
 
     def plot_classes_preds(input_arr, lab, model = res_model):
         preds, proba = images_to_proba(input_arr, model)
-        print(preds)
-        print(proba)
         fig = plt.figure(figsize=(12, 12))
         for i in range(4):
             ax = fig.add_subplot(1, 4, i+1, xticks=[], yticks=[])

@@ -4,10 +4,12 @@ import boto3
 from aws_tool import *
 import numpy as np
 import pandas as pd
+from skimage.filters import sobel
 import xlsxwriter
 import os
 import seaborn as sns
 from pathlib import Path
+from skimage.color import rgb2gray
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from clean_tabular import CleanData
@@ -32,7 +34,7 @@ class CleanImages(CleanData):
                 temp_image = Image.open(i)
                 black_back = Image.new(size=(size, size), mode=temp_image.mode) #, mode=mode
                 curr_size = temp_image.size
-                max_dim = max(temp_image.size)
+                max_dim = max(temp_image.size) #Maximum of height and width dimension
                 scale_fact = size / max_dim
                 resized_image_dim = (int(scale_fact*curr_size[0]), int(scale_fact*curr_size[1]))
                 updated_image = temp_image.resize(resized_image_dim)
@@ -43,9 +45,17 @@ class CleanImages(CleanData):
         print(t)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
-    def img_clean_sk(self, normalize = False):
+    def img_clean_sk(self, normalize = False, ):
+        '''
+        img: Image name as jpeg
+        img_id: Image ID (trims .jpef extension)
+        image_array: Numpy format for images
+        img_dim_list: Shape of image
+        img_num_features: Equal to 3 if RGB and 1 if grayscale
+        img_mode: Either RGB or L
+        '''
         image_re = re.compile(r'(.*)\.jpg')
-        img = []
+        img = [] 
         img_dim_list = []
         img_id = []
         image_array = []
@@ -74,6 +84,14 @@ class CleanImages(CleanData):
         print(self.image_frame.head())
         return self.image_frame
     
+    def edge_detect(self):
+        '''Should be used after having called either total clean or img_clean_sk method'''
+        try:
+            self.image_frame['edge_array'] = self.image_frame['image_array'].copy().apply(lambda i: sobel(rgb2gray(i)))
+        except:
+            self.image_frame['edge_array'] = self.image_frame['image_array'].copy().apply(lambda i: sobel(i))
+        return self.image_frame
+
     def to_excel(self, df):
         df.to_excel(Path(Path.cwd(), 'data_files','Cleaned_Images.xlsx'), sheet_name = 'images')
 
@@ -86,6 +104,7 @@ class CleanImages(CleanData):
     def total_clean(self, normalize=True, mode = 'RGB', size = 224):
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
+        self.edge_detect()
         self.merge_images()
         return self.final_df
     

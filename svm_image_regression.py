@@ -1,3 +1,4 @@
+import imp
 from sqlalchemy import create_engine, MetaData, inspect
 import boto3
 from aws_tool import *
@@ -13,7 +14,9 @@ from clean_tabular import CleanData
 from skimage.io import imread, imshow
 from skimage import io
 from skimage import img_as_float
+from itertools import product
 from skimage.transform import rescale, resize
+from skimage.color import rgb2gray
 from PIL import Image
 import sklearn
 from sklearn.model_selection import GridSearchCV
@@ -31,12 +34,14 @@ if __name__ == '__main__':
     img_size = 224
     '''Getting images dataframe'''
     image_class = CleanImages()
-    image_df = image_class.total_clean(size=img_size, mode='L')
+    image_df = image_class.total_clean(size=img_size, mode='RGB')
+
 
     '''Getting product data'''
     product_class = CleanData(tab_names=['Products'])
     product_class.get_na_vals(df='Products')
     products_df = product_class.table_dict['Products']
+    values_decoder = product_class.major_map_decoder
 
     '''Dataframe diagnostics'''
     print('\n')
@@ -54,6 +59,8 @@ if __name__ == '__main__':
     ### 
 
     '''Merging dataframes'''
+    print(image_df.columns)
+    print(products_df.columns)
     merged_df = image_df.merge(products_df, left_on='id', right_on='id')
     print(merged_df.head())
     print(merged_df.info())
@@ -61,10 +68,10 @@ if __name__ == '__main__':
     print(len(merged_df))
 
     ''' Dataset Preprocessing'''
-    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']].copy()
-    num_obs = 1200
+    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'edge_array','minor_category', 'major_category']].copy()
+    num_obs = 2100
     filtered_df = filtered_df.iloc[:num_obs]
-    X = filtered_df['image_array'].copy()
+    X = filtered_df['edge_array'].copy() #.apply(lambda i: rgb2gray(i))
     y = filtered_df['major_category'].copy()
     X = np.vstack(X.values)
     X = X.reshape((-1, img_size*img_size))    
@@ -74,10 +81,10 @@ if __name__ == '__main__':
     print('\n'.join([f'{i}) {j}' for i, j in enumerate(category_list, start=1)]))
     print(X.shape)
     print(y.shape)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
 
     '''Setting up GridSearchCV'''
-    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+    param_grid = {'C': [0.001, 0.01, 10]}
     svc = SVC(gamma='auto', kernel='rbf')
     model = GridSearchCV(estimator=svc, param_grid=param_grid)
     start_time = time.time()
@@ -91,9 +98,17 @@ if __name__ == '__main__':
     else:
         print(f'Time taken to train model comprising of {num_obs} observations: ', f'{round(total_secs, 2)} seconds taken')
     y_pred = model.predict(X_test)
+    print(y_pred)
 
     '''Model Prediction Evaluation'''
     print('Accuracy score: ', f'{accuracy_score(y_test, y_pred)*100:.2f}%')
     confusion_matrix(y_test, y_pred)
     sns.heatmap(confusion_matrix(y_test, y_pred), annot=True)
+    plt.tight_layout()
+    plt.show()
+
+    grid = GridSpec(nrows = 4, ncols = 4)
+    fig = plt.figure(figsize=(15,10))
+    for i, j in product(range(4), range(4)):
+        fig.add_subplot(grid[i, j]).imshow(image_df['edge_array'].iloc[np.random.randint(low=0, high=len(y)-1)])
     plt.show()
