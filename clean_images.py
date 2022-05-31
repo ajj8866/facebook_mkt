@@ -1,7 +1,5 @@
 import imp
 from sqlalchemy import create_engine, MetaData, inspect
-import boto3
-from aws_tool import *
 import numpy as np
 import pandas as pd
 import xlsxwriter
@@ -11,10 +9,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from clean_tabular import CleanData
+from skimage.color import rgb2gray
+from skimage.filters import sobel
 from skimage.io import imread, imshow
 from skimage import io
+import json
 from skimage import img_as_float
+import re
 from skimage.transform import rescale, resize
+from itertools import product
 from PIL import Image
 
 class CleanImages(CleanData):
@@ -25,23 +28,31 @@ class CleanImages(CleanData):
 
     def img_clean_pil(self, size = 512, mode = 'RGB'):
         image_re = re.compile(r'(.*)\.jpg')
-        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
+        #os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
+        os.chdir(Path(Path.cwd(), 'images'))
         t = 0
         for i in os.listdir():
             if re.findall(image_re, i) != []:
-                temp_image = Image.open(i)
-                black_back = Image.new(size=(size, size), mode=temp_image.mode) #, mode=mode
-                curr_size = temp_image.size
-                max_dim = max(temp_image.size)
-                scale_fact = size / max_dim
-                resized_image_dim = (int(scale_fact*curr_size[0]), int(scale_fact*curr_size[1]))
-                updated_image = temp_image.resize(resized_image_dim)
-                black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
-                black_back = black_back.convert(mode)
-                t += 1
-                black_back.save(i)
+                try:
+                    temp_image = Image.open(i)
+                    black_back = Image.new(size=(size, size), mode=temp_image.mode) #, mode=mode
+                    curr_size = temp_image.size
+                    max_dim = max(temp_image.size)
+                    scale_fact = size / max_dim
+                    resized_image_dim = (int(scale_fact*curr_size[0]), int(scale_fact*curr_size[1]))
+                    updated_image = temp_image.resize(resized_image_dim)
+                    black_back.paste(updated_image, ((size- resized_image_dim[0])//2, (size- resized_image_dim[1])//2))
+                    black_back = black_back.convert(mode)
+                    t += 1
+                    black_back.save(i)
+                except Exception:
+                    print(i)
+                    with open('invalid_file.json', 'w') as wrong_form:
+                        json.dump(i, wrong_form)
+                    os.remove(i)
+                    pass
         print(t)
-        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
+        os.chdir(Path(Path.cwd(), '..'))
 
     def img_clean_sk(self, normalize = False):
         image_re = re.compile(r'(.*)\.jpg')
@@ -82,13 +93,29 @@ class CleanImages(CleanData):
         self.final_df = self.image_frame.merge(self.df, on='image_id', how='inner', validate='one_to_many')
         print(self.final_df.head())
         return self.final_df
+    
+    def edge_detect(self):
+        try:
+            self.image_frame['edge_array'] = self.image_frame['image_array'].copy().apply(lambda i: sobel(rgb2gray(i)))
+        except: 
+            self.image_frame['edge_array'] = self.image_frame['image_array'].copy().apply(lambda i: sobel(i))
+        return self.image_frame
+
 
     def total_clean(self, normalize=True, mode = 'RGB', size = 224):
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
+        self.edge_detect()
         self.merge_images()
         return self.final_df
     
+    def show_random_images(self, col, size, fig_height= 15, fig_width=10):
+        grid = GridSpec(nrows = size, ncols = size)
+        fig = plt.figure(figsize=(fig_height, fig_width))
+        for i, j in product(range(size), range(size)):
+            fig.add_subplot(grid[i, j]).imshow(self.final_df[col].iloc[np.random.randint(low=0, high=len(self.final_df)-1)])
+        plt.show()
+
     def describe_data(self, df):
         print('\n')
         print('Data frame columnn information')
@@ -113,4 +140,4 @@ if __name__ == '__main__':
     print(cl.final_df.head())
     cl.describe_data(cl.final_df)
     print(cl)
-
+    cl.show_random_images(col='edge_array', size=4)

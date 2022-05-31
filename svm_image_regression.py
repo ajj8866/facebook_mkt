@@ -31,7 +31,7 @@ if __name__ == '__main__':
     img_size = 224
     '''Getting images dataframe'''
     image_class = CleanImages()
-    image_df = image_class.total_clean(size=img_size, mode='L')
+    image_df = image_class.total_clean(size=img_size, mode='RGB')
 
     '''Getting product data'''
     product_class = CleanData(tab_names=['Products'])
@@ -61,10 +61,10 @@ if __name__ == '__main__':
     print(len(merged_df))
 
     ''' Dataset Preprocessing'''
-    filtered_df = merged_df.loc[:, ['image_id', 'image_array', 'minor_category', 'major_category']].copy()
-    num_obs = 1200
+    filtered_df = merged_df.loc[:, ['edge_array','image_id', 'image_array', 'minor_category', 'major_category']].copy()
+    num_obs = 2400
     filtered_df = filtered_df.iloc[:num_obs]
-    X = filtered_df['image_array'].copy()
+    X = filtered_df['edge_array'].copy() #filtered_df['image_array'].copy()
     y = filtered_df['major_category'].copy()
     X = np.vstack(X.values)
     X = X.reshape((-1, img_size*img_size))    
