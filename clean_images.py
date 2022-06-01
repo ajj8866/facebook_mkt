@@ -28,8 +28,8 @@ class CleanImages(CleanData):
 
     def img_clean_pil(self, size = 512, mode = 'RGB'):
         image_re = re.compile(r'(.*)\.jpg')
-        #os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
-        os.chdir(Path(Path.cwd(), 'images'))
+        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt', 'images'))
+        # os.chdir(Path(Path.cwd(), 'images'))
         t = 0
         for i in os.listdir():
             if re.findall(image_re, i) != []:
@@ -52,7 +52,7 @@ class CleanImages(CleanData):
                     os.remove(i)
                     pass
         print(t)
-        os.chdir(Path(Path.cwd(), '..'))
+        os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
 
     def img_clean_sk(self, normalize = False):
         image_re = re.compile(r'(.*)\.jpg')

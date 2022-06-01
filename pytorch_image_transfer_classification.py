@@ -18,6 +18,7 @@ from torchvision.transforms import Normalize, ToPILImage, ToTensor
 from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
 import matplotlib.pyplot as plt
+import matplotlib
 import seaborn as sns
 from torch import nn
 import torch.optim as optim
@@ -28,11 +29,16 @@ import copy
 import time
 
 if __name__ == '__main__':
+    pd.set_option('display.max_colwidth', 400)
+    pd.set_option('display.max_columns', 15)
+    pd.set_option('display.max_rows', 40)
+    plt.rc('axes', titlesize=12)
+    
     res_model = models.resnet50(pretrained=True)
     for param in res_model.parameters():
         param.requires_grad = False
-    
     opt = optim.SGD
+
     res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=64), nn.ReLU(inplace=True), nn.Linear(in_features=64, out_features=13),
     nn.Softmax())
     train_prop = 0.8
@@ -51,14 +57,14 @@ if __name__ == '__main__':
     # test_class_encoder = train_dataset.class_dict
 
 
-    batch_size = 32
+    batch_size = 120
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
     data_loader_dict = {'train': train_loader, 'eval': test_loader}
     optimizer =  opt(res_model.parameters(), lr=0.1)
     # lambda_scheduler = lambda epoch: epoch*0.8 if epoch<=16  else epoch*0.1
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=lambda_scheduler)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[12, 15, 20, 22], gamma=0.5) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[10, 20, 27, 33, 42, 45, 48, 49], gamma=0.5) 
     criterion = nn.CrossEntropyLoss()
 
     train_size = train_dataset.dataset_size
@@ -109,7 +115,7 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 30, mode_scheduler = scheduler):
+    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler = scheduler):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()

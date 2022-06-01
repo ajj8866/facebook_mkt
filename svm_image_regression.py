@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     ''' Dataset Preprocessing'''
     filtered_df = merged_df.loc[:, ['edge_array','image_id', 'image_array', 'minor_category', 'major_category']].copy()
-    num_obs = 2400
+    num_obs = 120
     filtered_df = filtered_df.iloc[:num_obs]
     X = filtered_df['edge_array'].copy() #filtered_df['image_array'].copy()
     y = filtered_df['major_category'].copy()
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
 
     '''Setting up GridSearchCV'''
-    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+    param_grid = {'C': [0.001, 0.01, 0.1, 1]}
     svc = SVC(gamma='auto', kernel='rbf')
     model = GridSearchCV(estimator=svc, param_grid=param_grid)
     start_time = time.time()
@@ -97,3 +97,5 @@ if __name__ == '__main__':
     confusion_matrix(y_test, y_pred)
     sns.heatmap(confusion_matrix(y_test, y_pred, labels=list(product_class.major_map_decoder.values())), annot=True, xticklabels=True)
     plt.show()
+
+    

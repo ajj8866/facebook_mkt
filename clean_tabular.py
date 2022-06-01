@@ -7,6 +7,7 @@ import os
 import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
+import re
 from sklearn.preprocessing import LabelEncoder
 from matplotlib.gridspec import GridSpec
 
