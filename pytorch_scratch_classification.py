@@ -1,4 +1,3 @@
-from operator import mod
 import pandas as pd
 from clean_images import CleanImages
 from clean_tabular import CleanData
@@ -43,6 +42,8 @@ class Dataset(torch.utils.data.Dataset):
         merged_df = image_df.merge(products_df, left_on='id', right_on='id')
         filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
         filtered_df.dropna(inplace=True)
+        print(filtered_df[y].value_counts())
+        print(filtered_df[re.sub(re.compile('_encoded$'), '', y)].value_counts())
         train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
             filtered_df = filtered_df.iloc[:train_end]

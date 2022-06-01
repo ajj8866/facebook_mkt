@@ -1,4 +1,3 @@
-from turtle import color
 import pandas as pd
 from clean_images import CleanImages
 from clean_tabular import CleanData
@@ -34,7 +33,8 @@ if __name__ == '__main__':
         param.requires_grad = False
     
     opt = optim.SGD
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Dropout(0.2),nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=1024, bias=True), nn.Linear(in_features=1024, out_features=512), nn.Linear(in_features=512, out_features=64), nn.ReLU(inplace=True), nn.Linear(in_features=64, out_features=13),
+    nn.Softmax())
     train_prop = 0.8
 
     train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     optimizer =  opt(res_model.parameters(), lr=0.1)
     # lambda_scheduler = lambda epoch: epoch*0.8 if epoch<=16  else epoch*0.1
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=lambda_scheduler)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[4, 8, 12, 15, 20, 22], gamma=0.5) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[12, 15, 20, 22], gamma=0.5) 
     criterion = nn.CrossEntropyLoss()
 
     train_size = train_dataset.dataset_size
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = model(inputs)
-                        outputs = torch.softmax(outputs, dim=1)
+                        # outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)
                         loss = loss_type(outputs, labels)
                         if phase == 'train':

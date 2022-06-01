@@ -20,3 +20,4 @@ runs
 excel_sk.ipynb
 words.ipynb
 Dockerfile
+__pycache__
