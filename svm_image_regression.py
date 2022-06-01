@@ -74,7 +74,7 @@ if __name__ == '__main__':
     print('\n'.join([f'{i}) {j}' for i, j in enumerate(category_list, start=1)]))
     print(X.shape)
     print(y.shape)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
 
     '''Setting up GridSearchCV'''
     param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
@@ -91,9 +91,9 @@ if __name__ == '__main__':
     else:
         print(f'Time taken to train model comprising of {num_obs} observations: ', f'{round(total_secs, 2)} seconds taken')
     y_pred = model.predict(X_test)
-
+    print(product_class.major_map_decoder.values())
     '''Model Prediction Evaluation'''
     print('Accuracy score: ', f'{accuracy_score(y_test, y_pred)*100:.2f}%')
     confusion_matrix(y_test, y_pred)
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True)
+    sns.heatmap(confusion_matrix(y_test, y_pred, labels=list(product_class.major_map_decoder.values())), annot=True, xticklabels=True)
     plt.show()
