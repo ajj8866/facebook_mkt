@@ -129,6 +129,22 @@ class CleanImages(CleanData):
         print(df['image_shape'].unique())
         print(df['image_shape'].value_counts())
 
+class MergedData:
+    def __init__(self):
+        img_class = CleanImages()
+        prod_class = CleanData(tab_names=['Products'])
+        self.major_map_encoder = prod_class.major_map_encoder
+        self.major_map_decoder = prod_class.major_map_decoder
+        self.prod_frame = prod_class.table_dict['Products'].copy()
+        self.img_df = img_class.total_clean()
+        self.merged_frame = self.img_df.merge(self.prod_frame, left_on='id', right_on='id')
+    
+    def to_pickle(self):
+        self.merged_frame.to_pickle(Path.cwd())
+    
+    def get_val_counts(self):
+        return {'products': self.prod_frame, 'images': self.img_df, 'all': self.merged_frame}
+
 if __name__ == '__main__':
     print(os.getcwd())
     pd.set_option('display.max_colwidth', 400)

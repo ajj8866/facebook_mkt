@@ -1,5 +1,5 @@
 import pandas as pd
-from clean_images import CleanImages
+from clean_images import CleanImages, MergedData
 from clean_tabular import CleanData
 import os
 import numpy as np
@@ -16,30 +16,15 @@ from torch.nn import Module
 from torch import nn
 from pathlib import Path
 
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):
         '''
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
         '''
-        self.img_inp_type = X
-        self.transformer = transformer
-        self.img_dir = img_dir
-        self.img_size = img_size
-        '''Yielding images dataset from CleanImages python script'''
-        image_class = CleanImages()
-        image_df = image_class.total_clean(size=img_size, normalize=True, mode='RGB').copy()
-
-        '''Yielding product dataset from CleanData python script'''
-        product_class = CleanData(tab_names=['Products'])
-        self.classes = product_class.major_map_encoder.keys()
-        self.encoded_class = product_class.major_map_encoder.values()
-        self.class_dict = product_class.major_map_encoder
-        product_class.get_na_vals(df='Products')
-        products_df = product_class.table_dict['Products'].copy()
-
-        '''Merging both the previous dataset to link image with associated product category '''
-        merged_df = image_df.merge(products_df, left_on='id', right_on='id')
+        merge_class = MergedData()
+        merged_df = merge_class.merged_frame
         filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
         filtered_df.dropna(inplace=True)
         print(filtered_df[y].value_counts())
@@ -47,9 +32,12 @@ class Dataset(torch.utils.data.Dataset):
         train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
             filtered_df = filtered_df.iloc[:train_end]
-        else:
+        elif is_test == True:
             filtered_df = filtered_df.iloc[train_end:]
+        else:
+            pass
         self.dataset_size = len(filtered_df)
+        self.all_data = filtered_df
         print('Total observations in remaining dataset: ', len(filtered_df))
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values
