@@ -72,6 +72,7 @@ class CleanImages(CleanData):
                     image = img_as_float(image)
                 img_id.append(re.search(image_re, im).group(1))
                 image_array.append(image)
+                print(image.shape)
                 img_dim_list.append(image.shape)
                 if len(image.shape) == 3:
                     img_num_features.append(image.shape[2])
@@ -102,7 +103,7 @@ class CleanImages(CleanData):
         return self.image_frame
 
 
-    def total_clean(self, normalize=True, mode = 'RGB', size = 224):
+    def total_clean(self, normalize=False, mode = 'RGB', size = 224):
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
         self.edge_detect()

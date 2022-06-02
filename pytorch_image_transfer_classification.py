@@ -35,51 +35,36 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', 40)
     plt.rc('axes', titlesize=12)
 
-
-    
     res_model = models.resnet50(pretrained=True)
-    for param in res_model.parameters():
-        param.requires_grad = False
     opt = optim.SGD
+    optimizer =  opt(res_model.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[10, 20, 27, 33, 42, 45, 48, 49], gamma=0.5) 
+    criterion = nn.CrossEntropyLoss()
+
 
     def get_loader(img = 'image_array',batch_size=35, split_in_dataset = False, train_prop = 0.8):
-        res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=256, bias=True), nn.ReLU(inplace=True), nn.Dropout(0.2), nn.Linear(in_features=256, out_features=32), nn.ReLU(inplace=True), nn.Linear(in_features=32, out_features=13),
-        nn.Softmax())
         train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-        transofmer_dict = {'train': train_transformer, 'eveal': test_transformer}
         if split_in_dataset == True:
             train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, is_test=False, train_proportion=train_prop)
             test_dataset = Dataset(transformer=test_transformer, X=img, img_size=224, is_test=True, train_proportion=train_prop)
             train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
             test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
             data_loader_dict = {'train': train_loader, 'eval': test_loader}
-            return train_dataset, test_dataset, data_loader_dict
+            return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
         else:
             imaage_datsets= Dataset(transformer=test_transformer, X = img, img_size=224, is_test=None)
-            train_end = int(train_prop*len(imaage_datsets.dataset_size))
+            train_end = int(train_prop*imaage_datsets.dataset_size)
             train_dataset, test_dataset = random_split(imaage_datsets, lengths=[len(imaage_datsets.all_data.iloc[:train_end]), len(imaage_datsets.all_data.iloc[train_end:])])
             dataset_dict = {'train': train_dataset, 'eval': test_dataset}
             data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
-            return train_dataset, test_dataset, data_loader_dict
+            return len(imaage_datsets.all_data.iloc[:train_end]), len(imaage_datsets.all_data.iloc[train_end:]), data_loader_dict
         
     prod_dum = CleanData()
     class_dict = prod_dum.major_map_encoder.keys()
     classes = list(class_dict)
     class_values = prod_dum.major_map_encoder.values()
     class_encoder = prod_dum.major_map_encoder
-
-
-    train_dataset, test_dataset, dataloader_dict = get_loader(img='image', batch_size=35, split_in_dataset=False, train_prop=0.8)
-    optimizer =  opt(res_model.parameters(), lr=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[10, 20, 27, 33, 42, 45, 48, 49], gamma=0.5) 
-    criterion = nn.CrossEntropyLoss()
-
-    train_size = train_dataset.dataset_size
-    test_size = test_dataset.dataset_size
-    print(train_size)
-    print(test_size)
-    dataset_size = {'train': train_size, 'eval': test_size}
 
 
     '''Tensorboard Function for Showing Images'''
@@ -113,14 +98,18 @@ if __name__ == '__main__':
         return fig
 
 
-
     'Model training and testing function'
-    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler = scheduler, batch_size = 32):
+    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler = scheduler, batch_size = 32, image_type='image_array', split_in_datset=False):
+        for param in model.parameters():
+            param.requires_grad = False
+        model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=256, bias=True), nn.ReLU(inplace=True), nn.Dropout(0.2), nn.Linear(in_features=256, out_features=32), nn.ReLU(inplace=True), nn.Linear(in_features=32, out_features=13),
+        nn.Softmax())
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
         writer = SummaryWriter()
-        train_dataset, test_dataset, data_loader_dict = get_loader(batch_size=batch_size)
+        train_size, test_size, data_loader_dict = get_loader(batch_size=batch_size, img=image_type, split_in_dataset=split_in_datset)
+        dataset_size = {'train': train_size, 'eval': test_size}
     
         for epoch in range(num_epochs):
             for phase in ['train', 'eval']:
@@ -136,6 +125,8 @@ if __name__ == '__main__':
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
+                        # print(inputs)
+                        # print(inputs.size())
                         outputs = model(inputs)
                         # outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)

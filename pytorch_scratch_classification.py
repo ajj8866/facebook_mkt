@@ -23,6 +23,10 @@ class Dataset(torch.utils.data.Dataset):
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
         '''
+        self.img_inp_type = X
+        self.transformer = transformer
+        self.img_dir = img_dir
+        self.img_size = img_size
         merge_class = MergedData()
         merged_df = merge_class.merged_frame
         filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
@@ -54,8 +58,9 @@ class Dataset(torch.utils.data.Dataset):
                 self.X[idx] = self.X[idx]
         elif self.img_inp_type == 'image_array':
             try:
-                print(type(self.X))
-                self.X[idx] = torch.from_numpy(self.X[idx])
+                # self.X[idx] = torch.from_numpy(np.transpose(self.X[idx], (2,1,0)))
+                if self.transformer is not None:
+                    self.X[idx] = self.transformer(self.X[idx])
             except TypeError:
                 self.X[idx] = self.X[idx]
         else:
