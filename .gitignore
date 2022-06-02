@@ -22,4 +22,4 @@ words.ipynb
 Dockerfile
 __pycache__
 merged_dataset.ipynb
-
+aws_tool.py
