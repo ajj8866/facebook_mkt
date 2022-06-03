@@ -141,7 +141,7 @@ class MergedData:
         self.merged_frame = self.img_df.merge(self.prod_frame, left_on='id', right_on='id')
     
     def to_pickle(self):
-        self.merged_frame.to_pickle(Path.cwd())
+        self.merged_frame.to_pickle(Path(Path.cwd(), 'merged_data.pkl'))
     
     def get_val_counts(self):
         return {'products': self.prod_frame, 'images': self.img_df, 'all': self.merged_frame}
@@ -158,3 +158,6 @@ if __name__ == '__main__':
     cl.describe_data(cl.final_df)
     print(cl)
     cl.show_random_images(col='edge_array', size=4)
+    # merged_class = MergedData()
+    # merged_class.get_val_counts()
+    # merged_class.to_pickle()

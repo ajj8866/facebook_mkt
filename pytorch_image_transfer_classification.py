@@ -36,9 +36,13 @@ if __name__ == '__main__':
     plt.rc('axes', titlesize=12)
 
     res_model = models.resnet50(pretrained=True)
+    for param in res_model.parameters():
+        param.requires_grad = False
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=13)) #out_features=256, bias=True), nn.ReLU(inplace=True), nn.Linear(in_features=256, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
+
     opt = optim.SGD
     optimizer =  opt(res_model.parameters(), lr=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[10, 20, 27, 33, 42, 45, 48, 49], gamma=0.5) 
+    #scheduler = torch.optim.lr_scheduler.StepLR()
     criterion = nn.CrossEntropyLoss()
 
 
@@ -99,11 +103,7 @@ if __name__ == '__main__':
 
 
     'Model training and testing function'
-    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler = scheduler, batch_size = 32, image_type='image_array', split_in_datset=False):
-        for param in model.parameters():
-            param.requires_grad = False
-        model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=256, bias=True), nn.ReLU(inplace=True), nn.Dropout(0.2), nn.Linear(in_features=256, out_features=32), nn.ReLU(inplace=True), nn.Linear(in_features=32, out_features=13),
-        nn.Softmax())
+    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler=None, batch_size = 16, image_type='image_array', split_in_datset=False):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -128,7 +128,7 @@ if __name__ == '__main__':
                         # print(inputs)
                         # print(inputs.size())
                         outputs = model(inputs)
-                        # outputs = torch.softmax(outputs, dim=1)
+                        outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)
                         loss = loss_type(outputs, labels)
                         if phase == 'train':
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                     running_corrects = running_corrects + preds.eq(labels).sum()
                     running_loss = running_loss + (loss.item()*inputs.size(0))
 
-                if phase=='train':
+                if phase=='train' and (mode_scheduler is not None):
                     mode_scheduler.step()
 
                 '''Writer functions for epoch'''
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
-    model_tr = train_model()
+    model_tr = train_model(mode_scheduler=None)
 
 
 
