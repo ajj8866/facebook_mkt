@@ -1,21 +1,18 @@
-import pandas as pd
-from clean_images import CleanImages, MergedData
-from clean_tabular import CleanData
-import os
-import numpy as np
+from clean_tabular import CleanData, CleanImages, MergedData
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-import re
-from PIL import Image
 import multiprocessing
-from torchvision.transforms import Normalize, ToPILImage, ToTensor
+from torchvision.transforms import ToTensor
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn import Module
 from torch import nn
+import re
+import numpy as np
+import os
 from pathlib import Path
-
+from PIL import Image
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):

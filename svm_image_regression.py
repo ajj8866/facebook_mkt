@@ -18,8 +18,7 @@ from PIL import Image
 import sklearn
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
-from clean_images import CleanImages
-from clean_tabular import CleanData
+from clean_tabular import CleanData, MergedData, CleanImages
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 

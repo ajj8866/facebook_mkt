@@ -1,33 +1,27 @@
-import pandas as pd
-from sqlalchemy import true
-from clean_images import CleanImages, MergedData
-from clean_tabular import CleanData
+from clean_tabular import CleanData, CleanImages, MergedData
 import os
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import torchvision.transforms as transforms
 import re
-from PIL import Image
 import multiprocessing
 import torchvision
 from torchbearer import Trial
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import lr_scheduler
-from torchvision.transforms import Normalize, ToPILImage, ToTensor
 from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
 import matplotlib.pyplot as plt
-import matplotlib
 import seaborn as sns
 from torch import nn
 import torch.optim as optim
-from pathlib import Path
 from pytorch_scratch_classification import Dataset
 from torchvision import models, datasets
 import copy
 import time
+import pandas as pd
+import numpy as np
 
 if __name__ == '__main__':
     pd.set_option('display.max_colwidth', 400)
@@ -129,7 +123,7 @@ if __name__ == '__main__':
                         # print(inputs)
                         # print(inputs.size())
                         outputs = model(inputs)
-                        outputs = torch.softmax(outputs, dim=1)
+                        #outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)
                         loss = loss_type(outputs, labels)
                         if phase == 'train':
