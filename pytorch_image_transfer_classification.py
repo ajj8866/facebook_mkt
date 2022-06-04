@@ -38,11 +38,12 @@ if __name__ == '__main__':
     res_model = models.resnet50(pretrained=True)
     for param in res_model.parameters():
         param.requires_grad = False
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=13)) #out_features=256, bias=True), nn.ReLU(inplace=True), nn.Linear(in_features=256, out_features=128), nn.ReLU(inplace=True), nn.Linear(in_features=128, out_features=13))
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=64), nn.Linear(in_features=64, out_features=13))
+
 
     opt = optim.SGD
     optimizer =  opt(res_model.parameters(), lr=0.1)
-    #scheduler = torch.optim.lr_scheduler.StepLR()
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[5, 10, 15, 20, 25, 30], gamma=0.3) 
     criterion = nn.CrossEntropyLoss()
 
 
@@ -152,7 +153,7 @@ if __name__ == '__main__':
                 print(f'Size of dataset for phase {phase}', dataset_size[phase])
                 epoch_acc = running_corrects / dataset_size[phase]
                 writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_acc, epoch)
-                print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+                print(f'{phase.title()} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
                 writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss, epoch)
 
                 if phase == 'eval' and epoch_acc > best_accuracy:
@@ -167,7 +168,7 @@ if __name__ == '__main__':
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
-    model_tr = train_model(mode_scheduler=None)
+    model_tr = train_model(mode_scheduler=scheduler)
 
 
 

@@ -23,3 +23,6 @@ Dockerfile
 __pycache__
 merged_dataset.ipynb
 aws_tool.py
+images.zip
+torch_fb_run.ipynb
+fb_gdrive_trainV2.ipynb
