@@ -30,8 +30,12 @@ if __name__ == '__main__':
     plt.rc('axes', titlesize=12)
 
     res_model = models.resnet50(pretrained=True)
-    for param in res_model.parameters():
-        param.requires_grad = False
+    for i, param in enumerate(res_model.parameters(), start=1):
+        if i <=48:
+            param.requires_grad = False
+        else:
+            param.requires_grad = True
+
     res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=64), nn.Linear(in_features=64, out_features=13))
 
 
@@ -41,15 +45,14 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
 
 
-    def get_loader(img = 'image_array',batch_size=35, split_in_dataset = False, train_prop = 0.8):
-        train_transformer = transforms.Compose([transforms.RandomRotation(40), transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+    def get_loader(img = 'image_array',batch_size=35, split_in_dataset = True, train_prop = 0.8):
+        train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.RandomGrayscale(), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         if split_in_dataset == True:
             train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, is_test=False, train_proportion=train_prop)
             test_dataset = Dataset(transformer=test_transformer, X=img, img_size=224, is_test=True, train_proportion=train_prop)
-            train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
-            test_loader = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
-            data_loader_dict = {'train': train_loader, 'eval': test_loader}
+            dataset_dict = {'train': train_dataset, 'eval': test_dataset}
+            data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
             return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
         else:
             imaage_datsets= Dataset(transformer=test_transformer, X = img, img_size=224, is_test=None)
@@ -65,6 +68,9 @@ if __name__ == '__main__':
     class_values = prod_dum.major_map_encoder.values()
     class_encoder = prod_dum.major_map_encoder
 
+######################################################################################################################################################################################
+###################################     GRAPHS FOR TENSORBOARD #######################################################################################################################
+######################################################################################################################################################################################
 
     '''Tensorboard Function for Showing Images'''
     def show_image(input_ten_orig):
@@ -96,9 +102,13 @@ if __name__ == '__main__':
             plt.tight_layout()
         return fig
 
+######################################################################################################################################################################################
+###################################     MODEL TRAINING FUNCTION ######################################################################################################################
+######################################################################################################################################################################################
+
 
     'Model training and testing function'
-    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 50, mode_scheduler=None, batch_size = 16, image_type='image_array', split_in_datset=False):
+    def train_model(model=res_model, optimizer=optimizer, loss_type = criterion, num_epochs = 25, mode_scheduler=None, batch_size = 24, image_type='image_array', split_in_datset=False):
         best_model_weights = copy.deepcopy(model.state_dict()) #May be changed at end of each "for phase block"
         best_accuracy = 0 # May be changed at end of each "for phase block"
         start = time.time()
@@ -130,7 +140,7 @@ if __name__ == '__main__':
                             loss.backward() #Calculates gradients
                             optimizer.step()
 
-                    if batch_num%10==0:
+                    if batch_num%20==0:
                         '''Writer functions for batch'''
                         writer.add_figure('Predictions vs Actual',plot_classes_preds(input_arr=inputs, lab=labels, model=model))
                         writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
@@ -162,7 +172,7 @@ if __name__ == '__main__':
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
-    model_tr = train_model(mode_scheduler=scheduler)
+    model_tr = train_model(mode_scheduler=scheduler, split_in_datset=True, image_type='image')
 
 
 

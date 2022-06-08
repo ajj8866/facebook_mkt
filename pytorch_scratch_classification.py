@@ -2,6 +2,7 @@ from clean_tabular import CleanData, CleanImages, MergedData
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from PIL import Image
 import torchvision.transforms as transforms
 import multiprocessing
 from torchvision.transforms import ToTensor
@@ -32,17 +33,17 @@ class Dataset(torch.utils.data.Dataset):
         print(filtered_df[re.sub(re.compile('_encoded$'), '', y)].value_counts())
         train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
+            print('Training')
             filtered_df = filtered_df.iloc[:train_end]
         elif is_test == True:
             filtered_df = filtered_df.iloc[train_end:]
-        else:
-            pass
         self.dataset_size = len(filtered_df)
         self.all_data = filtered_df
+        print('filtered_df: ', print(type(self.all_data)))
+        print(self.all_data)
         print('Total observations in remaining dataset: ', len(filtered_df))
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values
-
 
     # Not dependent on index
     def __getitem__(self, idx): 
@@ -58,8 +59,9 @@ class Dataset(torch.utils.data.Dataset):
                 # self.X[idx] = torch.from_numpy(np.transpose(self.X[idx], (2,1,0)))
                 if self.transformer is not None:
                     self.X[idx] = self.transformer(self.X[idx])
-            except TypeError:
-                self.X[idx] = self.X[idx]
+            except TypeError as typ:
+                #print(typ)
+                self.X[idx] = self.transformer(Image.fromarray(self.X[idx]))
         else:
             self.X[idx] = self.X[idx]        
         return self.X[idx], self.y[idx]

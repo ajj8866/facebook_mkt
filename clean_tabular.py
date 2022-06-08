@@ -3,6 +3,11 @@ import pandas as pd
 import xlsxwriter
 import os
 import seaborn as sns
+from nltk import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+import nltk
+from nltk.corpus import stopwords
+nltk.download('omw-1.4')
 from pathlib import Path
 import matplotlib.pyplot as plt
 import re
@@ -10,7 +15,6 @@ from sklearn.preprocessing import LabelEncoder
 from matplotlib.gridspec import GridSpec
 import contractions 
 from pathlib import Path
-from matplotlib.gridspec import GridSpec
 from skimage.color import rgb2gray
 from skimage.filters import sobel
 from skimage.io import imread, imshow
@@ -225,7 +229,7 @@ class CleanImages(CleanData):
     def total_clean(self, normalize=False, mode = 'RGB', size = 224):
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
-        self.edge_detect()
+        #self.edge_detect()
         self.merge_images()
         return self.final_df
     
@@ -270,16 +274,34 @@ class MergedData:
         return {'products': self.prod_frame, 'images': self.img_df, 'all': self.merged_frame}
 
     def clean_prod(self, col='product_description'):
-        punct_re = re.compile(r'[^A-Za-z ]') #[^A-Za-z0-9 .]
+        stop_words = set(stopwords.words('english'))
+        word_lemmitizer = WordNetLemmatizer()
+        punct_re = re.compile(r'[^A-Za-z \n-]') #[^A-Za-z0-9 .]
         self.merged_frame[col] = self.merged_frame[col].copy().str.replace(punct_re, '')
         main_ls = []
         for i in self.merged_frame[col]:
             dum_ls = i.split()
+            dum_ls = [i for i in dum_ls if i not in  stop_words]
+            dum_ls = [i.replace('\n', ' ') for i in dum_ls]
+            dum_ls = [i.strip('\-') for i in dum_ls]
+            # dum_ls = [word_lemmitizer.lemmatize(i) for i in dum_ls]
             dum_ls = [contractions.fix(j) for j in dum_ls]
             main_ls.append(' '.join(dum_ls))
         self.merged_frame[col] = main_ls 
         self.merged_frame[col] = self.merged_frame[col].apply(lambda i: i.lower())
         print(self.merged_frame[col].head())
+    
+    def word_freq(self, col='product_decription'):
+        words, len_words = self.get_word_set(col=col)
+        word_dict = dict.fromkeys(words, 0)
+        for i in self.merged_frame[col]:
+            for j in i.split():
+                word_dict[j] += 1
+        for key, val in word_dict.items():
+            if val >20:
+                print(key, ':' , val)
+        return word_dict
+
 
     def get_word_set(self, col='product_name'):
         if col=='product_name':
@@ -291,17 +313,23 @@ class MergedData:
         full_word_set = list(set(full_word_set))
         print(full_word_set)
         print(len(full_word_set))
-        return len(full_word_set)
+        return full_word_set ,len(full_word_set)
 
     def clean_prod_name(self, col = 'product_name'):
         self.merged_frame[col] = self.merged_frame[col].str.split('|').apply(lambda i: i[0])
 
+    def vocab_encoder(self, col='product_description'):
+        words, vocab_size = self.get_word_set(col)
+        word_decoder = dict(enumerate(words))
+        word_encoder = {val: key for key, val in word_decoder.items()}
+        return word_decoder, word_encoder
 
 
 if __name__ == '__main__':
+    pass
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
     merged = MergedData()
-    merged.get_word_set(col='product_description')
+    merged.word_freq(col='product_description')
     # data_class.sum_by_cat()
     # print(data_class.cat_set())
