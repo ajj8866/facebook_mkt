@@ -1,3 +1,6 @@
+import enum
+from collections import Counter, defaultdict
+from ntpath import join
 import numpy as np
 import pandas as pd
 import xlsxwriter
@@ -266,9 +269,7 @@ class MergedData:
         self.prod_frame = prod_class.table_dict['Products'].copy()
         self.img_df = img_class.total_clean()
         self.merged_frame = self.img_df.merge(self.prod_frame, left_on='id', right_on='id')
-    
-    def to_pickle(self):
-        self.merged_frame.to_pickle(Path(Path.cwd(), 'merged_data.pkl'))
+        self.merged_frame = self.merged_frame.loc[:, ['image_id', 'product_description']]
     
     def get_val_counts(self):
         return {'products': self.prod_frame, 'images': self.img_df, 'all': self.merged_frame}
@@ -278,32 +279,31 @@ class MergedData:
         word_lemmitizer = WordNetLemmatizer()
         punct_re = re.compile(r'[^A-Za-z \n-]') #[^A-Za-z0-9 .]
         self.merged_frame[col] = self.merged_frame[col].copy().str.replace(punct_re, '')
+        all_text_ls = []
         main_ls = []
         for i in self.merged_frame[col]:
             dum_ls = i.split()
             dum_ls = [i for i in dum_ls if i not in  stop_words]
             dum_ls = [i.replace('\n', ' ') for i in dum_ls]
             dum_ls = [i.strip('\-') for i in dum_ls]
-            # dum_ls = [word_lemmitizer.lemmatize(i) for i in dum_ls]
+            dum_ls = [word_lemmitizer.lemmatize(i) for i in dum_ls]
             dum_ls = [contractions.fix(j) for j in dum_ls]
             main_ls.append(' '.join(dum_ls))
+            # print(' '.join(dum_ls))
+            all_text_ls.extend(dum_ls)
+        all_text_ls = [i.lower() for i in all_text_ls]
         self.merged_frame[col] = main_ls 
         self.merged_frame[col] = self.merged_frame[col].apply(lambda i: i.lower())
-        print(self.merged_frame[col].head())
+        return all_text_ls, len(all_text_ls)
     
-    def word_freq(self, col='product_decription'):
-        words, len_words = self.get_word_set(col=col)
-        word_dict = dict.fromkeys(words, 0)
-        for i in self.merged_frame[col]:
-            for j in i.split():
-                word_dict[j] += 1
-        for key, val in word_dict.items():
-            if val >20:
-                print(key, ':' , val)
-        return word_dict
+    def word_freq(self, col='product_description', num_items=100):
+        all_words = self.clean_prod(col=col)[0]
+        count_ls = Counter(all_words)
+        count_dict = {i[0]: i[1] for i in count_ls.most_common(num_items)}
+        print(count_dict)
+        return count_dict
 
-
-    def get_word_set(self, col='product_name'):
+    def get_word_set(self, col='product_description'):
         if col=='product_name':
             self.clean_prod_name(col=col)
         self.clean_prod(col=col)
@@ -313,16 +313,51 @@ class MergedData:
         full_word_set = list(set(full_word_set))
         print(full_word_set)
         print(len(full_word_set))
-        return full_word_set ,len(full_word_set)
+        return full_word_set ,len(full_word_set)+1
 
-    def clean_prod_name(self, col = 'product_name'):
+    def clean_prod_name(self, col = 'product_description'):
         self.merged_frame[col] = self.merged_frame[col].str.split('|').apply(lambda i: i[0])
 
     def vocab_encoder(self, col='product_description'):
         words, vocab_size = self.get_word_set(col)
+        word_encoder = defaultdict(lambda: vocab_size-1)
+        current_word_encoder = {key[0]: integer for integer, key in enumerate(Counter(words).most_common()[:vocab_size-1])}
         word_decoder = dict(enumerate(words))
-        word_encoder = {val: key for key, val in word_decoder.items()}
-        return word_decoder, word_encoder
+        word_encoder.update(current_word_encoder)
+        word_encoder['~'] = vocab_size-1
+        word_decoder = {val: key for key, val in word_encoder.items()}
+        # word_encoder = {val: key for key, val in word_decoder.items()}
+        return word_encoder, word_decoder
+
+    def feature_target_tuple(self, context_size):
+        vocab_encoder = self.vocab_encoder()
+        encoder, decoder = vocab_encoder[0], vocab_encoder[1]
+        self.clean_prod(col='product_description')
+        init_ls = []
+        for i in range(len(self.merged_frame)):
+            prod_descript = self.merged_frame['product_description'].iloc[i].split()
+            init_ls.append([
+                [
+                    list(np.array([[prod_descript[i - j], prod_descript[i+j]] for j in range(1, context_size+1)]).flatten()),
+                    prod_descript[i]
+                ]
+                for i in range(context_size, len(prod_descript)-context_size)
+            ])
+        self.merged_frame['feature_target'] = init_ls
+        self.merged_frame = self.merged_frame.explode('feature_target').reset_index()
+        print(self.merged_frame['feature_target'])
+        # self.merged_frame['target'] = self.merged_frame['feature_target'].apply(lambda i: i[1])
+        for idx, val in enumerate(self.merged_frame['feature_target']):
+            if type(val) is not list:
+                self.merged_frame.drop(idx, axis=0, inplace=True)
+        self.merged_frame = pd.concat([self.merged_frame, pd.DataFrame(self.merged_frame['feature_target'].tolist())], axis=1)
+        self.merged_frame.rename(columns={0: 'context', 1: 'target'}, inplace=True)
+        self.merged_frame = self.merged_frame.explode('context')
+        self.merged_frame['context_encoded'] = self.merged_frame['context'].apply(lambda i: encoder[i])
+        self.merged_frame['target_encoded'] = self.merged_frame['target'].apply(lambda i: encoder[i])
+        print(self.merged_frame.head())
+        return self.merged_frame
+        
 
 
 if __name__ == '__main__':
@@ -330,6 +365,6 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
     merged = MergedData()
-    merged.word_freq(col='product_description')
-    # data_class.sum_by_cat()
-    # print(data_class.cat_set())
+    # merged.word_freq(col='product_description')
+    # md = merged.clean_prod()
+    merged.feature_target_tuple(context_size=2)
