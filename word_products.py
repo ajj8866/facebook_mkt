@@ -70,7 +70,6 @@ class ProductDescp:
         all_words = self.clean_prod(col=col)[0]
         count_ls = Counter(all_words)
         count_dict = {i[0]: i[1] for i in count_ls.most_common(num_items)}
-        print(count_dict)
         return count_dict
 
     def get_word_set(self, col='product_description'):
@@ -81,8 +80,6 @@ class ProductDescp:
         for i in self.product_frame[col]:
             full_word_set.extend(i.split())
         full_word_set = list(set(full_word_set))
-        print(full_word_set)
-        print(len(full_word_set))
         return full_word_set ,len(full_word_set)+1
 
 
@@ -97,7 +94,7 @@ class ProductDescp:
         # word_encoder = {val: key for key, val in word_decoder.items()}
         return word_encoder, word_decoder
 
-    def feature_target_tuple(self, context_size=2):
+    def unlimited_vocab(self, context_size=2):
         vocab_encoder = self.vocab_encoder()
         encoder, decoder = vocab_encoder[0], vocab_encoder[1]
         self.clean_prod(col='product_description')
@@ -111,27 +108,24 @@ class ProductDescp:
                 ]
                 for i in range(context_size, len(prod_descript)-context_size)
             ])
-        self.product_frame['feature_target'] = init_ls
-        self.product_frame = self.product_frame.explode('feature_target').reset_index()
-        # print(self.product_frame['feature_target'])
-        # self.product_frame['target'] = self.product_frame['feature_target'].apply(lambda i: i[1])
-        for idx, val in enumerate(self.product_frame['feature_target']):
+        self.product_frame['orignal_feature_target'] = init_ls
+        self.product_frame = self.product_frame.explode('orignal_feature_target').reset_index()
+        for idx, val in enumerate(self.product_frame['orignal_feature_target']):
             if type(val) is not list:
                 self.product_frame.drop(idx, axis=0, inplace=True)
-        self.product_frame = pd.concat([self.product_frame, pd.DataFrame(self.product_frame['feature_target'].tolist())], axis=1)
+        self.product_frame = pd.concat([self.product_frame, pd.DataFrame(self.product_frame['orignal_feature_target'].tolist())], axis=1)
         self.product_frame.rename(columns={0: 'context', 1: 'target'}, inplace=True)
         self.product_frame = self.product_frame.explode('context').reset_index()
         self.product_frame['context_encoded'] = self.product_frame['context'].apply(lambda i: encoder[i])
         self.product_frame['target_encoded'] = self.product_frame['target'].apply(lambda i: encoder[i])
-        # print(self.product_frame.head())
         return self.product_frame, encoder, decoder
         
     def limit_vocab(self, voc_lim= 1000):
         new_wrd_encoder = self.word_freq(num_items=voc_lim)
         new_wrd_encoder['~~'] = voc_lim
         new_wrd_decoder = {val: key for key, val in new_wrd_encoder.items()}
-        DF, old_wrd_encoder, old_wrd_decoder = self.feature_target_tuple()
-        df = DF.loc[:, ['context', 'target', 'context_encoded', 'target_encoded']]
+        DF, old_wrd_encoder, old_wrd_decoder = self.unlimited_vocab()
+        df = DF.loc[:, ['context', 'target', 'context_encoded', 'target_encoded']].copy()
         context_new_ls = []
         for i in df['context']:
             if i in new_wrd_encoder.keys():
@@ -146,19 +140,18 @@ class ProductDescp:
             else:
                 target_new_ls.append(voc_lim)
         self.product_frame['target_encoded'] = target_new_ls
-        # print(self.product_frame)
         return self.product_frame, new_wrd_encoder, new_wrd_decoder
 
     def neg_samples(self, func= 'limit', voc_lim=10000, num_negative=2):
-        # voc_limit = {'limit': self.limit_vocab, 'unlimited': self.feature_target_tuple}
         if func=='limit':
             DF, encoder, decoder = self.limit_vocab(voc_lim=voc_lim)
             df = DF.copy()
         elif func=='unlimited':
-            DF, encoder, decoder = self.feature_target_tuple()
+            DF, encoder, decoder = self.unlimited_vocab()
             df = DF.copy()
         df['target_value'] = 1
         df.dropna(inplace= True)
+        df.drop(['minor_category', 'minor_category_encoded', 'page_id', 'location', 'price', 'create_time', 'level_0'], axis=1, inplace=True)
         for i in range(len(df)):
             for neg in df[df['target_encoded']!=df.iloc[i]['target_encoded']].sample(n=2)['context_encoded'].values:
                 dum_df = df.iloc[i].copy()
@@ -179,14 +172,7 @@ class ProductDescp:
             
 
 if __name__ == '__main__':
-    ex_writer = pd.ExcelWriter(path=Path(Path.cwd(), 'data_files', 'product_description_coded.xlsx'), engine='xlsxwriter')
-    # old_prod = ProductDescp()
-    # old_frame = old_prod.feature_target_tuple()[0].iloc[:10000]
-    # new_prod = ProductDescp()
-    # new_frame = new_prod.limit_vocab()[0].iloc[:10000]
-    # with ex_writer as writer:
-    #     old_frame.to_excel(writer, sheet_name='No Voc_Lim Description')
-    #     new_frame.to_excel(writer, sheet_name='With Voc_Lim Description')
+    ex_writer = pd.ExcelWriter(path=Path(Path.cwd(), 'data_files', 'product_description_coded.xlsx'), engine='xlsxwriter')  
     prod = ProductDescp()
     prod.neg_samples()
     new_frame = prod.neg_samples().iloc[:30000]
