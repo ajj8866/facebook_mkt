@@ -34,8 +34,8 @@ class CleanData:
         maj_unique_cats = ['Home & Garden ', 'Baby & Kids Stuff ', 'DIY Tools & Materials ', 'Music, Films, Books & Games ', 'Phones, Mobile Phones & Telecoms ', 'Clothes, Footwear & Accessories ', 'Other Goods ', 'Health & Beauty ', 'Sports, Leisure & Travel ', 'Appliances ', 'Computers & Software ','Office Furniture & Equipment ', 'Video Games & Consoles ']
         self.major_map_decoder = dict(enumerate(maj_unique_cats))
         self.major_map_encoder = {val: key for key, val in self.major_map_decoder.items()}
-        print(self.major_map_decoder)
-        print(self.major_map_encoder)
+        # print(self.major_map_decoder)
+        # print(self.major_map_encoder)
         if 'data_files' not in os.listdir():
             os.mkdir(Path(Path.cwd(), 'data_files'))
         self.table_dict = {}
@@ -48,7 +48,7 @@ class CleanData:
                 self.table_dict[table] = self.table_dict[table][np.round(self.table_dict[table]['price']) != 0]
             if 'category' in self.table_dict[table].columns:
                 self.expand_category(df=table)
-                print(self.table_dict[table].head())
+                # print(self.table_dict[table].head())
     
     
     def try_merge(self, df_list):
@@ -92,11 +92,10 @@ class CleanData:
     def cat_set(self, df = 'Products',cat_col = 'major_category'):
         return self.table_dict[df][cat_col].nunique()
     
-    def expand_category(self, df = 'Products'):
-        self.major_encoder = LabelEncoder()
+    def expand_category(self, df = 'Products', level=1):
         self.minor_encoder = LabelEncoder()
         self.table_dict[df]['major_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[0])
-        self.table_dict[df]['minor_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[1])
+        self.table_dict[df]['minor_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[level])
         self.table_dict[df] = self.table_dict[df][self.table_dict[df]['major_category'] != 'N'.strip()]
         print('Encoder', self.major_map_encoder)
         self.table_dict[df]['major_category_encoded'] = self.table_dict[df]['major_category'].map(self.major_map_encoder)
