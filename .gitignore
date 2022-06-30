@@ -27,3 +27,7 @@ images.zip
 torch_fb_run.ipynb
 fb_gdrive_trainV2.ipynb
 embeddings.ipynb
+word_prod_gensim.py
+word_products.py
+word2vec.ipynb
+word2vec.model
