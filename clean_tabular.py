@@ -29,7 +29,7 @@ from itertools import product
 from PIL import Image
 
 class CleanData:
-    def __init__(self, tab_names = ['Products']) -> None:
+    def __init__(self, level=1, tab_names = ['Products']) -> None:
         self.tab_names = tab_names
         maj_unique_cats = ['Home & Garden ', 'Baby & Kids Stuff ', 'DIY Tools & Materials ', 'Music, Films, Books & Games ', 'Phones, Mobile Phones & Telecoms ', 'Clothes, Footwear & Accessories ', 'Other Goods ', 'Health & Beauty ', 'Sports, Leisure & Travel ', 'Appliances ', 'Computers & Software ','Office Furniture & Equipment ', 'Video Games & Consoles ']
         self.major_map_decoder = dict(enumerate(maj_unique_cats))
@@ -47,8 +47,9 @@ class CleanData:
                 self.table_dict[table]['price'] = self.table_dict[table]['price'].str.replace(',', '').str.strip('£').str.strip(' ').astype(np.float32)
                 self.table_dict[table] = self.table_dict[table][np.round(self.table_dict[table]['price']) != 0]
             if 'category' in self.table_dict[table].columns:
-                self.expand_category(df=table)
+                self.expand_category(df=table, level=level)
                 # print(self.table_dict[table].head())
+                print(len(self.table_dict[table]['minor_category_encoded'].value_counts()))
     
     
     def try_merge(self, df_list):
@@ -99,7 +100,7 @@ class CleanData:
         self.table_dict[df] = self.table_dict[df][self.table_dict[df]['major_category'] != 'N'.strip()]
         print('Encoder', self.major_map_encoder)
         self.table_dict[df]['major_category_encoded'] = self.table_dict[df]['major_category'].map(self.major_map_encoder)
-        self.table_dict[df]['minor_category_encoded'] = self.minor_encoder.fit_transform(self.table_dict[df]['minor_category'])
+        self.table_dict[df]['minor_category_encoded'] = self.minor_encoder.fit_transform(self.table_dict[df]['minor_category'].sort_values(key=lambda i: i.str.lower()))
         return self.table_dict[df]
     
     def inverse_transform(self, input_array, major_minor = 'minor'):
@@ -147,8 +148,8 @@ class CleanData:
 
 
 class CleanImages(CleanData):
-    def __init__(self, tab_names=['Images']) -> None:
-        super().__init__(tab_names)
+    def __init__(self, level=1,tab_names=['Images']) -> None:
+        super().__init__(level=level, tab_names=tab_names)
         self.df = self.table_dict[tab_names[0]].copy()
         self.csv_df = None
 
@@ -268,7 +269,7 @@ class MergedData:
         self.prod_frame = prod_class.table_dict['Products'].copy()
         self.img_df = img_class.total_clean()
         self.merged_frame = self.img_df.merge(self.prod_frame, left_on='id', right_on='id')
-        self.merged_frame = self.merged_frame.loc[:, ['image_id', 'product_description']]
+        # self.merged_frame = self.merged_frame.loc[:, ['image_id', 'product_description']]
     
     def get_val_counts(self):
         return {'products': self.prod_frame, 'images': self.img_df, 'all': self.merged_frame}
@@ -279,5 +280,6 @@ if __name__ == '__main__':
     pass
     pd.set_option('display.max_columns', 15)
     pd.set_option('display.max_rows', 40)
-    merged = MergedData()
+    # merged = MergedData()
+    prod = CleanData(level=1)
 

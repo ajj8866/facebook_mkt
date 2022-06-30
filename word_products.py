@@ -35,12 +35,11 @@ from clean_tabular import CleanData, CleanImages
 ##########################################################################################################################################
 ##########################################################################################################################################
 
-class ProductDescp:
+class ProductDescpMannual(CleanData):
     def __init__(self):
-        prod_class = CleanData(tab_names=['Products'])
-        self.major_map_encoder = prod_class.major_map_encoder
-        self.major_map_decoder = prod_class.major_map_decoder
-        self.product_frame = prod_class.table_dict['Products'].copy()
+        super().__init__(tab_names=['Products'])
+        self.label_len = len(self.major_map_decoder)
+        self.product_frame = self.table_dict['Products'].copy()
 
     def clean_prod(self, col='product_description'):
         stop_words = set(stopwords.words('english'))
@@ -110,17 +109,20 @@ class ProductDescp:
             ])
         self.product_frame['orignal_feature_target'] = init_ls
         self.product_frame = self.product_frame.explode('orignal_feature_target').reset_index()
+        print(self.product_frame.head())
         for idx, val in enumerate(self.product_frame['orignal_feature_target']):
             if type(val) is not list:
                 self.product_frame.drop(idx, axis=0, inplace=True)
         self.product_frame = pd.concat([self.product_frame, pd.DataFrame(self.product_frame['orignal_feature_target'].tolist())], axis=1)
         self.product_frame.rename(columns={0: 'context', 1: 'target'}, inplace=True)
         self.product_frame = self.product_frame.explode('context').reset_index()
+        print(self.product_frame.head(20))
+        print(self.product_frame.columns)
         self.product_frame['context_encoded'] = self.product_frame['context'].apply(lambda i: encoder[i])
         self.product_frame['target_encoded'] = self.product_frame['target'].apply(lambda i: encoder[i])
         return self.product_frame, encoder, decoder
         
-    def limit_vocab(self, voc_lim= 1000):
+    def limit_vocab(self, voc_lim= 5000):
         new_wrd_encoder = self.word_freq(num_items=voc_lim)
         new_wrd_encoder['~~'] = voc_lim
         new_wrd_decoder = {val: key for key, val in new_wrd_encoder.items()}
@@ -142,7 +144,7 @@ class ProductDescp:
         self.product_frame['target_encoded'] = target_new_ls
         return self.product_frame, new_wrd_encoder, new_wrd_decoder
 
-    def neg_samples(self, func= 'limit', voc_lim=10000, num_negative=2):
+    def neg_samples(self, func= 'limit', voc_lim=5000, num_negative=4):
         if func=='limit':
             DF, encoder, decoder = self.limit_vocab(voc_lim=voc_lim)
             df = DF.copy()
@@ -151,31 +153,44 @@ class ProductDescp:
             df = DF.copy()
         df['target_value'] = 1
         df.dropna(inplace= True)
-        df.drop(['minor_category', 'minor_category_encoded', 'page_id', 'location', 'price', 'create_time', 'level_0'], axis=1, inplace=True)
-        for i in range(len(df)):
-            for neg in df[df['target_encoded']!=df.iloc[i]['target_encoded']].sample(n=2)['context_encoded'].values:
+        df.drop(['minor_category', 'minor_category_encoded', 'page_id', 'location', 'price', 'create_time', 'level_0', 'index', 'major_category', 'category'], axis=1, inplace=True)
+        iter_df = len(df.copy())
+        for i in range(iter_df): #
+            for neg in df[df['target_encoded']!=df.iloc[i]['target_encoded']].sample(n=num_negative)['context_encoded'].values:
                 dum_df = df.iloc[i].copy()
                 # print('Dataframe before')
                 # print(dum_df[['context', 'context_encoded', 'target_value']])
                 dum_df['context_encoded'] = neg
                 dum_df['context'] = decoder[neg]
                 dum_df['target_value'] = 0
-                print(dum_df.to_frame().T)
                 df = pd.concat([df, dum_df.to_frame().T], axis=0)
+                print(dum_df.to_frame().T)
+                print(i)
+        print(len(df))
+        print(df[df['target_value']==0].head())
         self.product_frame = df.copy()
+        writ = pd.ExcelWriter(Path(Path.cwd(), 'data_files', 'negative_samples.xlsx'), engine='xlsxwriter')
+        with writ as writer:
+            self.product_frame.sort_values(by=['target_value', 'major_category_encoded']).iloc[:10000].to_excel(writ)
         self.product_frame.dropna(inplace=True)
+        self.product_frame.to_csv(path_or_buf=Path(Path.cwd(), 'data_files', 'negative_samples.csv'))
         print(len(self.product_frame))
         print(self.product_frame.head())
-        print(len(self.product_frame))
+        print('Final length of dataframe: ', len(self.product_frame))
         # self.product_frame.loc[:, ['context_encoded', 'target_encoded', 'target_value']].astype(int,)
         return self.product_frame
             
 
 if __name__ == '__main__':
     ex_writer = pd.ExcelWriter(path=Path(Path.cwd(), 'data_files', 'product_description_coded.xlsx'), engine='xlsxwriter')  
-    prod = ProductDescp()
+    prod = ProductDescpMannual()
     prod.neg_samples()
-    new_frame = prod.neg_samples().iloc[:30000]
-    write = pd.ExcelWriter(Path(Path.cwd(), 'data_files', 'negative_samples.xlsx'), engine='xlsxwriter')
-    with write as writer: 
-        new_frame.to_excel(writer)
+
+
+
+
+    # prod.neg_samples()
+    # new_frame = prod.neg_samples().iloc[:1000]
+    # write = pd.ExcelWriter(Path(Path.cwd(), 'data_files', 'negative_samples.xlsx'), engine='xlsxwriter')
+    # with write as writer: 
+    #     new_frame.to_excel(writer)

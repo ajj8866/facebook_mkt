@@ -31,12 +31,13 @@ if __name__ == '__main__':
 
     res_model = models.resnet50(pretrained=True)
     for i, param in enumerate(res_model.parameters(), start=1):
-        if i <=48:
-            param.requires_grad = False
-        else:
-            param.requires_grad = True
+        # if i <=48:
+        #     param.requires_grad = False
+        # else:
+        #     param.requires_grad = True
+        param.requires_grad=False
 
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=64), nn.Linear(in_features=64, out_features=13))
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=115)) #, nn.Linear(in_features=64, out_features=13))
 
 
     opt = optim.SGD
@@ -45,17 +46,17 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
 
 
-    def get_loader(img = 'image_array',batch_size=35, split_in_dataset = True, train_prop = 0.8):
+    def get_loader(img = 'image_array', y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8):
         train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.RandomGrayscale(), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         if split_in_dataset == True:
-            train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, is_test=False, train_proportion=train_prop)
-            test_dataset = Dataset(transformer=test_transformer, X=img, img_size=224, is_test=True, train_proportion=train_prop)
+            train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop)
+            test_dataset = Dataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop)
             dataset_dict = {'train': train_dataset, 'eval': test_dataset}
             data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
             return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
         else:
-            imaage_datsets= Dataset(transformer=test_transformer, X = img, img_size=224, is_test=None)
+            imaage_datsets= Dataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None)
             train_end = int(train_prop*imaage_datsets.dataset_size)
             train_dataset, test_dataset = random_split(imaage_datsets, lengths=[len(imaage_datsets.all_data.iloc[:train_end]), len(imaage_datsets.all_data.iloc[train_end:])])
             dataset_dict = {'train': train_dataset, 'eval': test_dataset}
@@ -142,7 +143,7 @@ if __name__ == '__main__':
 
                     if batch_num%20==0:
                         '''Writer functions for batch'''
-                        writer.add_figure('Predictions vs Actual',plot_classes_preds(input_arr=inputs, lab=labels, model=model))
+                        # writer.add_figure('Predictions vs Actual',plot_classes_preds(input_arr=inputs, lab=labels, model=model))
                         writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
                         writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
 

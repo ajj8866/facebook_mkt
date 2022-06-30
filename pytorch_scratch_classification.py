@@ -16,7 +16,7 @@ from pathlib import Path
 from PIL import Image
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):
+    def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', cutoff_freq=20, img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):
         '''
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
@@ -31,6 +31,13 @@ class Dataset(torch.utils.data.Dataset):
         filtered_df.dropna(inplace=True)
         print(filtered_df[y].value_counts())
         print(filtered_df[re.sub(re.compile('_encoded$'), '', y)].value_counts())
+        if y=='minor_category_encoded':
+            lookup = filtered_df.groupby([y])[y].count()
+            print(lookup)
+            filt = lookup[lookup>cutoff_freq].index
+            print(filt)
+            filtered_df = filtered_df[filtered_df[y].isin(filt)]
+        print('Number of Unique Categories Remaining: ', len(filtered_df[y].unique()))
         train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
             print('Training')
