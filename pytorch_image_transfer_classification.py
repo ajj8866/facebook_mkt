@@ -10,6 +10,7 @@ import torchvision
 from torchbearer import Trial
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import lr_scheduler
+from sklearn.preprocessing import LabelEncoder
 from torchbearer.callbacks import TensorBoard
 from torch.nn import Module
 import matplotlib.pyplot as plt
@@ -31,13 +32,20 @@ if __name__ == '__main__':
 
     res_model = models.resnet50(pretrained=True)
     for i, param in enumerate(res_model.parameters(), start=1):
-        # if i <=48:
-        #     param.requires_grad = False
-        # else:
-        #     param.requires_grad = True
         param.requires_grad=False
 
-    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=115)) #, nn.Linear(in_features=64, out_features=13))
+    def get_label_lim(cutoff_lim = 20):
+        merged_class = MergedData()
+        merged_df = merged_class.merged_frame
+        merged_df.dropna(inplace=True)
+        lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count()
+        filt = lookup_group[lookup_group>cutoff_lim].index
+        merged_df = merged_df[merged_df['minor_category_encoded'].isin(filt)]
+        print(len(merged_df['minor_category_encoded'].unique()))
+        return len(merged_df['minor_category_encoded'].unique())
+
+
+    res_model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=get_label_lim())) #, nn.Linear(in_features=64, out_features=13))
 
 
     opt = optim.SGD
@@ -131,11 +139,13 @@ if __name__ == '__main__':
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
-                        # print(inputs)
+                        print('Inputs: \n', inputs)
                         # print(inputs.size())
                         outputs = model(inputs)
                         #outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)
+                        print('Predictions: \n', preds)
+                        print('Labels:\n', labels)
                         loss = loss_type(outputs, labels)
                         if phase == 'train':
                             loss.backward() #Calculates gradients

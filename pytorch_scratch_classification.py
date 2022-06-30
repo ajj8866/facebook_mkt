@@ -8,6 +8,7 @@ import multiprocessing
 from torchvision.transforms import ToTensor
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn import Module
+from sklearn.preprocessing import LabelEncoder
 from torch import nn
 import re
 import numpy as np
@@ -33,10 +34,10 @@ class Dataset(torch.utils.data.Dataset):
         print(filtered_df[re.sub(re.compile('_encoded$'), '', y)].value_counts())
         if y=='minor_category_encoded':
             lookup = filtered_df.groupby([y])[y].count()
-            print(lookup)
             filt = lookup[lookup>cutoff_freq].index
-            print(filt)
             filtered_df = filtered_df[filtered_df[y].isin(filt)]
+            new_sk_encoder = LabelEncoder()
+            filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'].sort_values(key=lambda i: i.str.lower()))
         print('Number of Unique Categories Remaining: ', len(filtered_df[y].unique()))
         train_end = int(len(filtered_df)*train_proportion)
         if is_test == False:
