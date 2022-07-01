@@ -6,6 +6,7 @@ from PIL import Image
 import torchvision.transforms as transforms
 import multiprocessing
 from torchvision.transforms import ToTensor
+from sklearn.utils import shuffle
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn import Module
 from sklearn.preprocessing import LabelEncoder
@@ -37,19 +38,25 @@ class Dataset(torch.utils.data.Dataset):
             filt = lookup[lookup>cutoff_freq].index
             filtered_df = filtered_df[filtered_df[y].isin(filt)]
             new_sk_encoder = LabelEncoder()
-            filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'].sort_values(key=lambda i: i.str.lower()))
+            filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'])
         print('Number of Unique Categories Remaining: ', len(filtered_df[y].unique()))
         train_end = int(len(filtered_df)*train_proportion)
-        if is_test == False:
-            print('Training')
-            filtered_df = filtered_df.iloc[:train_end]
-        elif is_test == True:
-            filtered_df = filtered_df.iloc[train_end:]
+        if is_test is not None:
+            filtered_df = shuffle(filtered_df)
+            filtered_df.reset_index(inplace=True)
+            print('NEW FILTERED DF\n', filtered_df.head())
+            
+            if is_test == False:
+                print('Training')
+                filtered_df = filtered_df.iloc[:train_end]
+            elif is_test == True:
+                filtered_df = filtered_df.iloc[train_end:]
         self.dataset_size = len(filtered_df)
         self.all_data = filtered_df
         print('filtered_df: ', print(type(self.all_data)))
         print(self.all_data)
         print('Total observations in remaining dataset: ', len(filtered_df))
+        self.new_category_encoder = new_sk_encoder
         self.y = torch.tensor(filtered_df[y].values)
         self.X = filtered_df[X].values
 

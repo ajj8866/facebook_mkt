@@ -1,3 +1,4 @@
+from pathlib import Path
 from clean_tabular import CleanData, CleanImages, MergedData
 import os
 import torch
@@ -60,16 +61,23 @@ if __name__ == '__main__':
         if split_in_dataset == True:
             train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop)
             test_dataset = Dataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop)
+            print(train_dataset.new_category_encoder)
+            print(dict(zip(train_dataset.new_category_encoder.classes_, train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_))))
+            print(dict(zip(test_dataset.new_category_encoder.classes_, test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_))))
+            pd.DataFrame(data={'classes': test_dataset.new_category_encoder.classes_, 'values': test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'test_transformer.xlsx'))
+            pd.DataFrame(data={'classes': train_dataset.new_category_encoder.classes_, 'values': train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'train_transformer.xlsx'))
+            #assert( (pd.DataFrame(data={'classes': test_dataset.new_category_encoder.classes_, 'values': test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_)}) == pd.DataFrame(data={'classes': train_dataset.new_category_encoder.classes_, 'values': train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_)})).all() )
             dataset_dict = {'train': train_dataset, 'eval': test_dataset}
             data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
             return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
         else:
-            imaage_datsets= Dataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None)
-            train_end = int(train_prop*imaage_datsets.dataset_size)
-            train_dataset, test_dataset = random_split(imaage_datsets, lengths=[len(imaage_datsets.all_data.iloc[:train_end]), len(imaage_datsets.all_data.iloc[train_end:])])
+            image_dataset= Dataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None)
+            train_end = int(train_prop*image_dataset.dataset_size)
+            train_dataset, test_dataset = random_split(image_dataset, lengths=[len(image_dataset.all_data.iloc[:train_end]), len(image_dataset.all_data.iloc[train_end:])])
             dataset_dict = {'train': train_dataset, 'eval': test_dataset}
             data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
-            return len(imaage_datsets.all_data.iloc[:train_end]), len(imaage_datsets.all_data.iloc[train_end:]), data_loader_dict
+            pd.DataFrame(data= {'class': image_dataset.new_category_encoder.classes_, 'values': image_dataset.new_category_encoder.transform(image_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'outside_dataset_split_encoder.xlsx'))
+            return len(image_dataset.all_data.iloc[:train_end]), len(image_dataset.all_data.iloc[train_end:]), data_loader_dict
         
     prod_dum = CleanData()
     class_dict = prod_dum.major_map_encoder.keys()
@@ -139,7 +147,7 @@ if __name__ == '__main__':
                     optimizer.zero_grad() # Gradients reset to zero at beginning of both training and evaluation phase
 
                     with torch.set_grad_enabled(phase == 'train'):
-                        print('Inputs: \n', inputs)
+                        #print('Inputs: \n', inputs)
                         # print(inputs.size())
                         outputs = model(inputs)
                         #outputs = torch.softmax(outputs, dim=1)
@@ -183,7 +191,7 @@ if __name__ == '__main__':
         print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
         return model
 
-    model_tr = train_model(mode_scheduler=scheduler, split_in_datset=True, image_type='image')
+    model_tr = train_model(mode_scheduler=scheduler, split_in_datset=False, image_type='image_array')
 
 
 
