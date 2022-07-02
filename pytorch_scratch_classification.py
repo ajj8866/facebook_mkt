@@ -1,3 +1,4 @@
+from matplotlib.transforms import Transform
 from clean_tabular import CleanData, CleanImages, MergedData
 import torch
 import torch.nn.functional as F
@@ -45,7 +46,6 @@ class Dataset(torch.utils.data.Dataset):
             filtered_df = shuffle(filtered_df)
             filtered_df.reset_index(inplace=True)
             print('NEW FILTERED DF\n', filtered_df.head())
-            
             if is_test == False:
                 print('Training')
                 filtered_df = filtered_df.iloc[:train_end]
@@ -63,22 +63,17 @@ class Dataset(torch.utils.data.Dataset):
     # Not dependent on index
     def __getitem__(self, idx): 
         if self.img_inp_type == 'image':
-            try:
-                self.X[idx] =  Image.open(os.path.join(self.img_dir, self.X[idx]))
-                if self.transformer is not None:
-                    self.X[idx] = self.transformer(self.X[idx])
-            except TypeError:
-                self.X[idx] = self.X[idx]
-        elif self.img_inp_type == 'image_array':
-            try:
-                # self.X[idx] = torch.from_numpy(np.transpose(self.X[idx], (2,1,0)))
-                if self.transformer is not None:
-                    self.X[idx] = self.transformer(self.X[idx])
-            except TypeError as typ:
-                #print(typ)
-                self.X[idx] = self.transformer(Image.fromarray(self.X[idx]))
+            self.X[idx] =  self.transformer(Image.open(os.path.join(self.img_dir, self.X[idx])))
         else:
-            self.X[idx] = self.X[idx]        
+            try:
+                self.X[idx] = self.transformer(self.X[idx])        
+            except TypeError:
+                print(self.X[idx])
+                print(type(self.X[idx]))
+                try:
+                    self.X[idx] = transforms.Compose([self.transformer.transforms[i] for i in range(len(self.transformer.transforms)-2)])(self.X[idx])
+                except:
+                    self.X[idx] = self.X[idx]
         return self.X[idx], self.y[idx]
 
     def __len__(self):

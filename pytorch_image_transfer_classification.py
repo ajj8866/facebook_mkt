@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
 
     def get_loader(img = 'image_array', y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8):
-        train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.RandomGrayscale(), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+        train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
         if split_in_dataset == True:
             train_dataset = Dataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop)
@@ -152,8 +152,8 @@ if __name__ == '__main__':
                         outputs = model(inputs)
                         #outputs = torch.softmax(outputs, dim=1)
                         preds = torch.argmax(outputs, dim=1)
-                        print('Predictions: \n', preds)
-                        print('Labels:\n', labels)
+                        # print('Predictions: \n', preds)
+                        # print('Labels:\n', labels)
                         loss = loss_type(outputs, labels)
                         if phase == 'train':
                             loss.backward() #Calculates gradients
