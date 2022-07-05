@@ -280,5 +280,6 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', 40)
     # merged = MergedData()
     prod = CleanData(level=1)
+    print(prod)
     prod.table_dict['Products'].loc[:, ['minor_category', 'minor_category_encoded']].to_excel(Path(Path.cwd(), 'data_files', 'min_cat.xlsx'))
 
