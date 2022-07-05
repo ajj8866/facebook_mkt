@@ -173,8 +173,8 @@ class ImageTextDataset(torch.utils.data.Dataset):
             new_sk_encoder = LabelEncoder()
             filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'])
         
-        print('Number of unique filtered observations in dataloader: ', len(filtered_df['minor_category_encoded'].unique()))
-        print('Unique categories remaining in dataloader: ', filtered_df['minor_category_encoded'].unique())
+        # print('Number of unique filtered observations in dataloader: ', len(filtered_df['minor_category_encoded'].unique()))
+        # print('Unique categories remaining in dataloader: ', filtered_df['minor_category_encoded'].unique())
     
         train_end = int(len(filtered_df)*train_proportion)
         if is_test is not None:
@@ -208,8 +208,6 @@ class ImageTextDataset(torch.utils.data.Dataset):
             try:
                 self.image[idx] = self.transformer(self.image[idx])        
             except TypeError:
-                print(self.image[idx])
-                print(type(self.image[idx]))
                 try:
                     self.image[idx] = transforms.Compose([self.transformer.transforms[i] for i in range(len(self.transformer.transforms)-2)])(self.image[idx])
                 except:
@@ -256,7 +254,7 @@ def get_loader(img = 'image_array', train_transformer = transforms.Compose([tran
 
 '''COMBINE MODEL TRAINING'''
 def train_model(combined_optimizer=optim.SGD, major=True, cutoff_lim=30, loss=nn.CrossEntropyLoss, batch_size=32, num_epochs=30,comb_scheduler=None, initial_lr=0.1, fin_lr=0.0001, step_interval=4, min_count=4, train_prop=0.8,
-split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])):
+split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])):
     if major==True:
         assert y=='major_category_encoded'
     else:
@@ -271,10 +269,10 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
         step_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=step_interval, gamma=gamma_mult) 
     else:
         comb_scheduler()
+    writer = SummaryWriter()
     best_accuracy = 0
     train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim)
     dataset_size = {'train': train_size, 'eval': test_size}
-    writer = SummaryWriter()
     start = time.time()
 
     for epoch_num, epoch in enumerate(range(num_epochs), start=1):
@@ -282,48 +280,52 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
         print('Starting epoch number: ', epoch_num)
         for phase in ['train', 'eval']:
             if phase=='train':
+                print('Phase right after phase iteration is : ', phase) #Still train
                 combined_model.train()
             else:
                 combined_model.eval()
         
-        running_loss = 0
-        running_corrects = 0
-        for batch_num, (images_chunk, text_chunk, labels) in enumerate(dataloader_dict[phase]): 
-            optimizer.zero_grad()
+            running_loss = 0
+            running_corrects = 0
+            for batch_num, (images_chunk, text_chunk, labels) in enumerate(dataloader_dict[phase]): 
+                print('Phase right after bathc iteration start: ', phase) #Now eval!
+                optimizer.zero_grad()
 
-            with torch.set_grad_enabled(phase=='train'):
-                outputs=combined_model(images_chunk, text_chunk)
-                preds = torch.argmax(outputs, dim=1)
-                print('Labels:\n', labels)
-                print('Predictions:\n', preds)
-                loss = criterion(outputs, labels)
-                if phase == 'train':
-                    loss.backward()
-                    optimizer.step()
+                with torch.set_grad_enabled(phase=='train'):
+                    print('Phase right after setting enabled grad: ', phase) #Now eval!
+                    outputs=combined_model(images_chunk, text_chunk)
+                    preds = torch.argmax(outputs, dim=1)
+                    print('Labels:\n', labels)
+                    print('Predictions:\n', preds)
+                    loss = criterion(outputs, labels)
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer.step()
 
-            # if batch_num%30==0:
-            writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
-            writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
-        
-            running_corrects = running_corrects + preds.eq(labels).sum()
-            running_loss = running_loss + (loss.item()*(images_chunk.size(0)+text_chunk.size(0)))
+                if batch_num%5==0:
+                    print('Phase just before tensorboard writer: ', phase)
+                    writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
+                    writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
+            
+                running_corrects = running_corrects + preds.eq(labels).sum()
+                running_loss = running_loss + (loss.item()*(images_chunk.size(0)+text_chunk.size(0)))
 
-        if phase=='train' and comb_scheduler is not None:
-            comb_scheduler()
-        else:
-            step_scheduler.step()
-        
-        epoch_loss = running_loss/dataloader_dict[phase]
-        print(f'Size of dataset for phase {phase}', dataset_size[phase])
-        epoch_accuracy = running_corrects/dataset_size[phase]
-        writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_accuracy, epoch)
-        print(f'{phase.title()} Loss: {epoch_loss:.4f} Acc: {epoch_accuracy:.4f}')
-        writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss, epoch)
+            if phase=='train' and comb_scheduler is not None:
+                comb_scheduler.step()
+            else:
+                step_scheduler.step()
+            
+            epoch_loss = running_loss/dataset_size[phase]
+            print(f'Size of dataset for phase {phase}', dataset_size[phase])
+            epoch_accuracy = running_corrects/dataset_size[phase]
+            writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_accuracy, epoch)
+            print(f'{phase.title()} Loss: {epoch_loss:.4f} Acc: {epoch_accuracy:.4f}')
+            writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss, epoch)
 
-        if phase=='eval' and epoch_accuracy > best_accuracy:
-            best_accuracy=epoch_accuracy
-            best_model_weights = copy.deepcopy(combined_model.state_dict())
-            print(f'Best Accuracy Value in {epoch_num}th Epoch and equal to : {best_accuracy:.4f}')
+            if phase=='eval' and epoch_accuracy > best_accuracy:
+                best_accuracy=epoch_accuracy
+                best_model_weights = copy.deepcopy(combined_model.state_dict())
+                print(f'Best Accuracy Value in {epoch_num}th Epoch and equal to : {best_accuracy:.4f}')
 
     combined_model.load_state_dict(best_model_weights)
     torch.save(combined_model.state_dict(), 'image_text_combined.pt')
@@ -332,4 +334,4 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
     return combined_model
 
 if __name__ == '__main__':
-    train_model(y='minor_category_encoded', major=False)
+    train_model(y='major_category_encoded', major=True,cutoff_lim=50)
