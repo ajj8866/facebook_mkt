@@ -1,6 +1,5 @@
 import enum
 from collections import Counter, defaultdict
-from http.client import NON_AUTHORITATIVE_INFORMATION
 from ntpath import join
 from turtle import forward
 import numpy as np
@@ -97,7 +96,6 @@ def num_out(major=True, cutoff_lim = 30):
     else:
         get_label_lim(cutoff_lim=cutoff_lim) 
 
-
 ImageClassifier.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=final_layer_num))
 
 
@@ -188,7 +186,6 @@ class ImageTextDataset(torch.utils.data.Dataset):
 
         self.y = torch.tensor(self.main_frame[y].values)
         self.image = filtered_df[X].values
-        print(self.image)
         self.product_description = self.main_frame['product_description'].to_list()
 
     # Not dependent on index
@@ -215,15 +212,6 @@ class ImageTextDataset(torch.utils.data.Dataset):
             prod_description = self.model(**bert_encoded).last_hidden_state.swapaxes(1,2)
 
         self.prod_description = prod_description.squeeze(0)
-        # print('Image type: ', type(self.image))
-        # print('Image After Transformation\n', self.image)
-        # print('Product_description size', self.prod_description.size())
-        # print('Product_description indexed size', self.prod_description.size())
-        # print('Product_category size', self.y.size())
-        # print('Product_category indexed size', self.y[idx].size())
-        print(self.image[idx])
-        print(self.y[idx])
-        #print(self.prod_description[idx])
         return self.image[idx], self.prod_description, self.y[idx]
     
     def __len__(self):
@@ -303,16 +291,19 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
                 writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
         
             running_corrects = running_corrects + preds.eq(labels).sum()
-            #############
+            running_loss = running_loss + (loss.item()*(images_chunk.size(0)+text_chunk.size(0)))
 
         if phase=='train' and comb_scheduler is not None:
             comb_scheduler()
         else:
             step_scheduler.step()
         
+        epoch_loss = running_loss/dataloader_dict[[phase]]
         print(f'Size of dataset for phase {phase}', dataset_size[phase])
         epoch_accuracy = running_corrects/dataset_size[phase]
         writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_accuracy, epoch)
+        print(f'{phase.title()} Loss: {epoch_loss:.4f} Acc: {epoch_accuracy:.4f}')
+        writer.add_scalar(f'Average loss by epoch phase {phase}', epoch_loss, epoch)
 
         if phase=='eval' and epoch_accuracy > best_accuracy:
             best_accuracy=epoch_accuracy
