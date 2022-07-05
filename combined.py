@@ -60,9 +60,13 @@ from sklearn.utils import shuffle
 from torchvision.transforms import ToTensor
 from torchvision import transforms
 
-def get_label_lim(cutoff_lim = 20):
-    merged_class = MergedData()
-    merged_df = merged_class.merged_frame
+def get_label_lim(df=None, cutoff_lim = 20):
+    '''Gets the number of unique labels remaining in the dataset'''
+    if df is None:
+        merged_class = MergedData()
+        merged_df = merged_class.merged_frame
+    else:
+        merged_df = df.copy()
     merged_df.dropna(inplace=True)
     lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count()
     filt = lookup_group[lookup_group>cutoff_lim].index
@@ -94,7 +98,8 @@ def num_out(major=True, cutoff_lim = 30):
         print(len(class_encoder))
         return len(class_encoder)
     else:
-        get_label_lim(cutoff_lim=cutoff_lim) 
+        print(get_label_lim(cutoff_lim=cutoff_lim))
+        return get_label_lim(cutoff_lim=cutoff_lim) 
 
 ImageClassifier.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=final_layer_num))
 
@@ -143,7 +148,7 @@ class ImageTextDataset(torch.utils.data.Dataset):
         self.img_size = img_size
         merge_class = MergedData()
         merged_df = merge_class.merged_frame
-        filtered_df = merged_df.loc[:, ['image_id', 'id',X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
+        filtered_df = merged_df.loc[:, ['image_id', 'id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
         filtered_df.dropna(inplace=True)
         ## Text Model 
         products_description = ProductDescpMannual()
@@ -167,6 +172,10 @@ class ImageTextDataset(torch.utils.data.Dataset):
             filtered_df = filtered_df[filtered_df[y].isin(filt)]
             new_sk_encoder = LabelEncoder()
             filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'])
+        
+        print('Number of unique filtered observations in dataloader: ', len(filtered_df['minor_category_encoded'].unique()))
+        print('Unique categories remaining in dataloader: ', filtered_df['minor_category_encoded'].unique())
+    
         train_end = int(len(filtered_df)*train_proportion)
         if is_test is not None:
             filtered_df = shuffle(filtered_df)
@@ -176,10 +185,12 @@ class ImageTextDataset(torch.utils.data.Dataset):
                 filtered_df = filtered_df.iloc[:train_end]
             elif is_test == True:
                 filtered_df = filtered_df.iloc[train_end:]
-        filtered_df = filtered_df.merge(self.product_df, left_on='id', right_on='id', how='left')
 
+        filtered_df = filtered_df.merge(self.product_df, left_on='id', right_on='id', how='left')
         self.dataset_size = len(filtered_df)
         self.main_frame = filtered_df
+        print(self.main_frame.head())
+        self.main_frame.to_excel(Path(Path.cwd(), 'data_files', 'letssee.xlsx'))
         self.new_category_encoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_encoder][0]
         self.new_category_decoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_decoder][0]
         self.label = self.main_frame[y]
@@ -218,10 +229,10 @@ class ImageTextDataset(torch.utils.data.Dataset):
         return len(self.main_frame)
 
 '''COMBINED DATALOADER'''
-def get_loader(img = 'image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8, max_length=30, min_count=4):
+def get_loader(img = 'image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8, max_length=30, min_count=4, cutoff_freq=30):
     if split_in_dataset == True:
-        train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count)
-        test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count)
+        train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
+        test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
         if y=='minor_category_encoded':
             print(train_dataset.new_category_encoder)
             print(dict(zip(train_dataset.new_category_encoder.classes_, train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_))))
@@ -233,7 +244,7 @@ def get_loader(img = 'image_array', train_transformer = transforms.Compose([tran
         data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
         return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
     else:
-        image_dataset= ImageTextDataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None, max_length=max_length)
+        image_dataset= ImageTextDataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None, max_length=max_length, cutoff_freq=cutoff_freq)
         train_end = int(train_prop*image_dataset.dataset_size)
         train_dataset, test_dataset = random_split(image_dataset, lengths=[len(image_dataset.main_frame.iloc[:train_end]), len(image_dataset.main_frame.iloc[train_end:])])
         dataset_dict = {'train': train_dataset, 'eval': test_dataset}
@@ -250,17 +261,18 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
         assert y=='major_category_encoded'
     else:
         assert y=='minor_category_encoded'
+    print('Number of unique categories remaining in training model: ', num_out(major=major, cutoff_lim=cutoff_lim))
     combined_model = CombinedModel(input_size=768, num_classes=num_out(major=major, cutoff_lim=cutoff_lim))
-    optimizer =  combined_optimizer(combined_model.parameters(), lr=0.1)
+    optimizer =  combined_optimizer(combined_model.parameters(), lr=initial_lr)
     criterion = loss()
     if comb_scheduler is None:
         num_steps = num_epochs//step_interval
         gamma_mult = (fin_lr/initial_lr)**(1/num_steps)
-        step_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=4, gamma=gamma_mult) 
+        step_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=step_interval, gamma=gamma_mult) 
     else:
         comb_scheduler()
     best_accuracy = 0
-    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length)
+    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim)
     dataset_size = {'train': train_size, 'eval': test_size}
     writer = SummaryWriter()
     start = time.time()
@@ -282,13 +294,16 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
             with torch.set_grad_enabled(phase=='train'):
                 outputs=combined_model(images_chunk, text_chunk)
                 preds = torch.argmax(outputs, dim=1)
+                print('Labels:\n', labels)
+                print('Predictions:\n', preds)
                 loss = criterion(outputs, labels)
                 if phase == 'train':
                     loss.backward()
                     optimizer.step()
-            if batch_num%30==0:
-                writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
-                writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
+
+            # if batch_num%30==0:
+            writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
+            writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
         
             running_corrects = running_corrects + preds.eq(labels).sum()
             running_loss = running_loss + (loss.item()*(images_chunk.size(0)+text_chunk.size(0)))
@@ -298,7 +313,7 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
         else:
             step_scheduler.step()
         
-        epoch_loss = running_loss/dataloader_dict[[phase]]
+        epoch_loss = running_loss/dataloader_dict[phase]
         print(f'Size of dataset for phase {phase}', dataset_size[phase])
         epoch_accuracy = running_corrects/dataset_size[phase]
         writer.add_scalar(f'Accuracy by epoch phase {phase}', epoch_accuracy, epoch)
@@ -317,4 +332,4 @@ split_in_dataset=False, max_length=30, y='major_category_encoded', img='image_ar
     return combined_model
 
 if __name__ == '__main__':
-    train_model()
+    train_model(y='minor_category_encoded', major=False)
