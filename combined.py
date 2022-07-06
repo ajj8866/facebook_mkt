@@ -128,6 +128,11 @@ class CombinedModel(nn.Module):
         self.main = nn.Sequential(nn.Linear(2*final_layer_num, num_classes))
 
     def forward(self, image_features, text_features):
+        print(image_features.size())
+        print(type(image_features))
+        print(image_features.permute(0,3, 1, 2).size())
+        print(type(image_features.permute(0,3, 1, 2)))
+        image_features = image_features.permute(0, 3, 1, 2).float()
         image_features = self.image_classifier(image_features)
         text_features = self.text_classifier(text_features)
         combined_features = torch.cat((image_features, text_features), 1)
@@ -271,7 +276,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         comb_scheduler()
     writer = SummaryWriter()
     best_accuracy = 0
-    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim)
+    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, batch_size=batch_size)
     dataset_size = {'train': train_size, 'eval': test_size}
     start = time.time()
 
@@ -280,7 +285,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         print('Starting epoch number: ', epoch_num)
         for phase in ['train', 'eval']:
             if phase=='train':
-                print('Phase right after phase iteration is : ', phase) #Still train
+                print('Phase right after phase iteration is : ', phase) 
                 combined_model.train()
             else:
                 combined_model.eval()
@@ -288,11 +293,11 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
             running_loss = 0
             running_corrects = 0
             for batch_num, (images_chunk, text_chunk, labels) in enumerate(dataloader_dict[phase]): 
-                print('Phase right after bathc iteration start: ', phase) #Now eval!
+                print('Phase right after bathc iteration start: ', phase) 
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase=='train'):
-                    print('Phase right after setting enabled grad: ', phase) #Now eval!
+                    print('Phase right after setting enabled grad: ', phase) 
                     outputs=combined_model(images_chunk, text_chunk)
                     preds = torch.argmax(outputs, dim=1)
                     print('Labels:\n', labels)
@@ -334,4 +339,4 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     return combined_model
 
 if __name__ == '__main__':
-    train_model(y='major_category_encoded', major=True,cutoff_lim=50)
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50)
