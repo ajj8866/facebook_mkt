@@ -1,6 +1,7 @@
 import enum
 from collections import Counter, defaultdict
 from ntpath import join
+from torch.utils.data import SubsetRandomSampler
 from turtle import forward
 import numpy as np
 import pandas as pd
@@ -79,7 +80,7 @@ pd.options.display.max_colwidth = 400
 pd.set_option('display.max_columns', 15)
 pd.set_option('display.max_rows', 40)
 plt.rc('axes', titlesize=12)
-final_layer_num = 64
+final_layer_num = 128
 
 '''IMAGE MODEL'''
 prod_dum = CleanData()
@@ -128,11 +129,6 @@ class CombinedModel(nn.Module):
         self.main = nn.Sequential(nn.Linear(2*final_layer_num, num_classes))
 
     def forward(self, image_features, text_features):
-        print(image_features.size())
-        print(type(image_features))
-        print(image_features.permute(0,3, 1, 2).size())
-        print(type(image_features.permute(0,3, 1, 2)))
-        image_features = image_features.permute(0, 3, 1, 2).float()
         image_features = self.image_classifier(image_features)
         text_features = self.text_classifier(text_features)
         combined_features = torch.cat((image_features, text_features), 1)
@@ -192,6 +188,11 @@ class ImageTextDataset(torch.utils.data.Dataset):
                 filtered_df = filtered_df.iloc[train_end:]
 
         filtered_df = filtered_df.merge(self.product_df, left_on='id', right_on='id', how='left')
+        if is_test==True:
+            print('Length of test dataset: ',len(filtered_df))
+        if is_test==False:
+            print('Length of training dataset is: ', len(filtered_df))
+
         self.dataset_size = len(filtered_df)
         self.main_frame = filtered_df
         print(self.main_frame.head())
@@ -199,9 +200,8 @@ class ImageTextDataset(torch.utils.data.Dataset):
         self.new_category_encoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_encoder][0]
         self.new_category_decoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_decoder][0]
         self.label = self.main_frame[y]
-
         self.y = torch.tensor(self.main_frame[y].values)
-        self.image = filtered_df[X].values
+        self.image = self.main_frame[X].values
         self.product_description = self.main_frame['product_description'].to_list()
 
     # Not dependent on index
@@ -236,25 +236,23 @@ def get_loader(img = 'image_array', train_transformer = transforms.Compose([tran
     if split_in_dataset == True:
         train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
         test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
-        if y=='minor_category_encoded':
-            print(train_dataset.new_category_encoder)
-            print(dict(zip(train_dataset.new_category_encoder.classes_, train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_))))
-            print(dict(zip(test_dataset.new_category_encoder.classes_, test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_))))
-            pd.DataFrame(data={'classes': test_dataset.new_category_encoder.classes_, 'values': test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'test_transformer.xlsx'))
-            pd.DataFrame(data={'classes': train_dataset.new_category_encoder.classes_, 'values': train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'train_transformer.xlsx'))
-        #assert( (pd.DataFrame(data={'classes': test_dataset.new_category_encoder.classes_, 'values': test_dataset.new_category_encoder.transform(test_dataset.new_category_encoder.classes_)}) == pd.DataFrame(data={'classes': train_dataset.new_category_encoder.classes_, 'values': train_dataset.new_category_encoder.transform(train_dataset.new_category_encoder.classes_)})).all() )
         dataset_dict = {'train': train_dataset, 'eval': test_dataset}
         data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
         return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
     else:
-        image_dataset= ImageTextDataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None, max_length=max_length, cutoff_freq=cutoff_freq)
-        train_end = int(train_prop*image_dataset.dataset_size)
-        train_dataset, test_dataset = random_split(image_dataset, lengths=[len(image_dataset.main_frame.iloc[:train_end]), len(image_dataset.main_frame.iloc[train_end:])])
-        dataset_dict = {'train': train_dataset, 'eval': test_dataset}
-        data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
+        image_text_dataset= ImageTextDataset(transformer=test_transformer, X = img, y=y, img_size=224, is_test=None, max_length=max_length, cutoff_freq=cutoff_freq)
+        main_df = image_text_dataset.main_frame
+        main_df = main_df.sample(len(main_df))
+        dataset_size = len(image_text_dataset.dataset_size)
+        dataset_indices = list(range(dataset_size))
+        train_end = int(train_prop*dataset_size)
+        train_portion = dataset_indices[:train_end]
+        test_portion = dataset_indices[train_end:]
+        dataset_sizes = {'train': train_portion, 'eval': test_portion}
+        data_loader_dict = {i: DataLoader(dataset=image_text_dataset, batch_size=batch_size, sampler=SubsetRandomSampler(dataset_sizes[i])) for i in dataset_sizes}
         if y == 'minor_category_encoded':
-            pd.DataFrame(data= {'class': image_dataset.new_category_encoder.classes_, 'values': image_dataset.new_category_encoder.transform(image_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'outside_dataset_split_encoder.xlsx'))
-        return len(image_dataset.main_frame.iloc[:train_end]), len(image_dataset.main_frame.iloc[train_end:]), data_loader_dict
+            pd.DataFrame(data= {'class': image_text_dataset.new_category_encoder.classes_, 'values': image_text_dataset.new_category_encoder.transform(image_text_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'outside_dataset_split_encoder.xlsx'))
+        return len(image_text_dataset.main_frame.iloc[:train_end]), len(image_text_dataset.main_frame.iloc[train_end:]), data_loader_dict
 
 
 '''COMBINE MODEL TRAINING'''
@@ -276,7 +274,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         comb_scheduler()
     writer = SummaryWriter()
     best_accuracy = 0
-    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, batch_size=batch_size)
+    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, train_transformer=train_transformer, test_transformer=test_transformer)
     dataset_size = {'train': train_size, 'eval': test_size}
     start = time.time()
 
@@ -285,7 +283,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         print('Starting epoch number: ', epoch_num)
         for phase in ['train', 'eval']:
             if phase=='train':
-                print('Phase right after phase iteration is : ', phase) 
+                print('Phase right after phase iteration is : ', phase) #Still train
                 combined_model.train()
             else:
                 combined_model.eval()
@@ -293,11 +291,11 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
             running_loss = 0
             running_corrects = 0
             for batch_num, (images_chunk, text_chunk, labels) in enumerate(dataloader_dict[phase]): 
-                print('Phase right after bathc iteration start: ', phase) 
+                print('Phase right after bathc iteration start: ', phase) #Now eval!
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase=='train'):
-                    print('Phase right after setting enabled grad: ', phase) 
+                    print('Phase right after setting enabled grad: ', phase) #Now eval!
                     outputs=combined_model(images_chunk, text_chunk)
                     preds = torch.argmax(outputs, dim=1)
                     print('Labels:\n', labels)
@@ -339,4 +337,4 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     return combined_model
 
 if __name__ == '__main__':
-    train_model(y='major_category_encoded', major=True, cutoff_lim=50)
+    train_model(y='major_category_encoded', major=True,cutoff_lim=50, img='image', split_in_dataset=True)
