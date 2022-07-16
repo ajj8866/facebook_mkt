@@ -80,7 +80,7 @@ pd.options.display.max_colwidth = 400
 pd.set_option('display.max_columns', 15)
 pd.set_option('display.max_rows', 40)
 plt.rc('axes', titlesize=12)
-final_layer_num = 128
+final_layer_num = 24
 
 '''IMAGE MODEL'''
 prod_dum = CleanData()
@@ -179,8 +179,7 @@ class ImageTextDataset(torch.utils.data.Dataset):
     
         train_end = int(len(filtered_df)*train_proportion)
         if is_test is not None:
-            filtered_df = shuffle(filtered_df)
-            filtered_df.reset_index(inplace=True)
+            filtered_df = filtered_df.sample(frac=1).reset_index(drop=True)
             if is_test == False:
                 print('Training')
                 filtered_df = filtered_df.iloc[:train_end]
@@ -189,13 +188,17 @@ class ImageTextDataset(torch.utils.data.Dataset):
 
         filtered_df = filtered_df.merge(self.product_df, left_on='id', right_on='id', how='left')
         if is_test==True:
+            print('#'*20)
             print('Length of test dataset: ',len(filtered_df))
+            print('#'*20)
         if is_test==False:
+            print('#'*20)
             print('Length of training dataset is: ', len(filtered_df))
+            print('#'*20)
 
         self.dataset_size = len(filtered_df)
         self.main_frame = filtered_df
-        print(self.main_frame.head())
+        # print(self.main_frame.head())
         self.main_frame.to_excel(Path(Path.cwd(), 'data_files', 'letssee.xlsx'))
         self.new_category_encoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_encoder][0]
         self.new_category_decoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_decoder][0]
@@ -208,7 +211,10 @@ class ImageTextDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx): 
         'Image Slicer'
         if self.img_inp_type == 'image':
-            self.image[idx] =  self.transformer(Image.open(os.path.join(self.img_dir, self.image[idx])))
+            try:
+                self.image[idx] =  self.transformer(Image.open(os.path.join(self.img_dir, self.image[idx])))
+            except: 
+                self.image[idx] = transforms.Compose([self.transformer.transforms[i] for i in range(len(self.transformer.transforms)-2)])(self.image[idx])
         else:
             try:
                 self.image[idx] = self.transformer(self.image[idx])        
@@ -250,13 +256,11 @@ def get_loader(img = 'image_array', train_transformer = transforms.Compose([tran
         test_portion = dataset_indices[train_end:]
         dataset_sizes = {'train': train_portion, 'eval': test_portion}
         data_loader_dict = {i: DataLoader(dataset=image_text_dataset, batch_size=batch_size, sampler=SubsetRandomSampler(dataset_sizes[i])) for i in dataset_sizes}
-        if y == 'minor_category_encoded':
-            pd.DataFrame(data= {'class': image_text_dataset.new_category_encoder.classes_, 'values': image_text_dataset.new_category_encoder.transform(image_text_dataset.new_category_encoder.classes_)}).to_excel(Path(Path.cwd(), 'data_files', 'outside_dataset_split_encoder.xlsx'))
-        return len(image_text_dataset.main_frame.iloc[:train_end]), len(image_text_dataset.main_frame.iloc[train_end:]), data_loader_dict
+        return len(dataset_size['train']), len(dataset_size['eval']), data_loader_dict
 
 
 '''COMBINE MODEL TRAINING'''
-def train_model(combined_optimizer=optim.SGD, major=True, cutoff_lim=30, loss=nn.CrossEntropyLoss, batch_size=32, num_epochs=30,comb_scheduler=None, initial_lr=0.1, fin_lr=0.0001, step_interval=4, min_count=4, train_prop=0.8,
+def train_model(combined_optimizer=optim.SGD, major=True, cutoff_lim=30, loss=nn.CrossEntropyLoss, batch_size=32, num_epochs=20, comb_scheduler=None, initial_lr=0.1, fin_lr=0.0001, step_interval=2, min_count=4, train_prop=0.8,
 split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])):
     if major==True:
         assert y=='major_category_encoded'
@@ -274,7 +278,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         comb_scheduler()
     writer = SummaryWriter()
     best_accuracy = 0
-    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, train_transformer=train_transformer, test_transformer=test_transformer)
+    train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, train_transformer=train_transformer, test_transformer=test_transformer, batch_size=batch_size)
     dataset_size = {'train': train_size, 'eval': test_size}
     start = time.time()
 
@@ -283,40 +287,40 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         print('Starting epoch number: ', epoch_num)
         for phase in ['train', 'eval']:
             if phase=='train':
-                print('Phase right after phase iteration is : ', phase) #Still train
                 combined_model.train()
             else:
                 combined_model.eval()
-        
+            if comb_scheduler is not None:
+                print('Current learning rate: ', comb_scheduler().get_last_lr()[0])                
+            elif comb_scheduler is None:
+                print('Current learning rate: ', step_scheduler.get_last_lr()[0])
             running_loss = 0
             running_corrects = 0
             for batch_num, (images_chunk, text_chunk, labels) in enumerate(dataloader_dict[phase]): 
-                print('Phase right after bathc iteration start: ', phase) #Now eval!
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase=='train'):
-                    print('Phase right after setting enabled grad: ', phase) #Now eval!
                     outputs=combined_model(images_chunk, text_chunk)
                     preds = torch.argmax(outputs, dim=1)
-                    print('Labels:\n', labels)
-                    print('Predictions:\n', preds)
+                    # print('Labels:\n', labels)
+                    # print('Predictions:\n', preds)
                     loss = criterion(outputs, labels)
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
 
-                if batch_num%5==0:
+                if batch_num%10==0:
                     print('Phase just before tensorboard writer: ', phase)
                     writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
                     writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
             
                 running_corrects = running_corrects + preds.eq(labels).sum()
-                running_loss = running_loss + (loss.item()*(images_chunk.size(0)+text_chunk.size(0)))
+                running_loss = running_loss + (loss.item()*(images_chunk.size(0)))
 
-            if phase=='train' and comb_scheduler is not None:
-                comb_scheduler.step()
-            else:
+            if (phase=='train') and (comb_scheduler is None):
                 step_scheduler.step()
+            elif (phase=='train') and (comb_scheduler is not None):
+                comb_scheduler.step()
             
             epoch_loss = running_loss/dataset_size[phase]
             print(f'Size of dataset for phase {phase}', dataset_size[phase])
