@@ -31,3 +31,6 @@ word_prod_gensim.py
 word_products.py
 word2vec.ipynb
 word2vec.model
+fb_train_gdrivev2.ipynb
+image_text_combined.pt
+prodcut_model.pt
