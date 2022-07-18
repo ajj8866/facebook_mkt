@@ -34,3 +34,4 @@ word2vec.model
 fb_train_gdrivev2.ipynb
 image_text_combined.pt
 prodcut_model.pt
+.DS_Store
