@@ -155,8 +155,8 @@ class ProductDescpMannual(CleanData):
         df['context_decoded'] = df['context_encoded'].apply(lambda i: stub_coder(ls=i,code_type='decoded'))
         df['target_encoded'] = df['target'].apply(lambda i: product_encoder[i])
         df['target_decoded'] = df['target_encoded'].apply(lambda i: product_decoder[i])
-        print(df)
-        print(df.columns)
+        # print(df)
+        # print(df.columns)
         self.product_frame = df.copy()
         return self.product_frame, product_encoder, product_decoder
 

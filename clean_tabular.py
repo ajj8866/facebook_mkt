@@ -47,7 +47,7 @@ class CleanData:
             if 'category' in self.table_dict[table].columns:
                 self.expand_category(df=table, level=level)
                 # print(self.table_dict[table].head())
-                print(len(self.table_dict[table]['minor_category_encoded'].value_counts()))
+                # print(len(self.table_dict[table]['minor_category_encoded'].value_counts()))
     
     
     def try_merge(self, df_list):
@@ -207,7 +207,7 @@ class CleanImages(CleanData):
                 img_mode.append(Image.open(im).mode)
         os.chdir(Path(Path.home(), 'Downloads', 'AICore', 'facebook_mkt'))
         self.image_frame = pd.DataFrame(data={'image_id': img_id, 'image': img,'image_array': image_array,'image_shape': img_dim_list, 'mode': img_mode})
-        print(self.image_frame.head())
+        # print(self.image_frame.head())
         return self.image_frame
     
     def to_excel(self, df):
@@ -216,7 +216,7 @@ class CleanImages(CleanData):
     def merge_images(self):
         self.df.rename({'id': 'image_id', 'product_id': 'id'}, axis=1, inplace=True)
         self.final_df = self.image_frame.merge(self.df, on='image_id', how='inner', validate='one_to_many')
-        print(self.final_df.head())
+        # print(self.final_df.head())
         return self.final_df
     
     def edge_detect(self):
