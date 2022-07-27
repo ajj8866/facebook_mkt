@@ -14,7 +14,10 @@ from nltk.corpus import stopwords
 nltk.download('omw-1.4')
 from pathlib import Path
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 import pickle
+=======
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
 import re
 from sklearn.preprocessing import LabelEncoder
 from matplotlib.gridspec import GridSpec
@@ -199,7 +202,11 @@ class TextDatasetBert(torch.utils.data.Dataset):
         bert_encoded = {key: torch.LongTensor(value) for key, value in bert_encoded.items()}
         with torch.no_grad():
             new_description = self.model(**bert_encoded).last_hidden_state.swapaxes(1,2)
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
         new_description = new_description.squeeze(0)
         return new_description, label
 
@@ -219,8 +226,11 @@ class DescriptionClassifier(Module):
     
     def forward(self, inp):
         x = self.main(inp)
+<<<<<<< HEAD
         print('After forward output',x)
         print('After forward output size: ', x.size())
+=======
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
         return x
 
 
@@ -294,9 +304,14 @@ def train_model(model, optimizer, dataset,loss_type, num_epochs = 1, mode_schedu
     print(f'Time taken for model to run: {(time_diff//60)} minutes and {(time_diff%60):.0f} seconds')
     return model
 
+<<<<<<< HEAD
 print(__name__)
 
 if __name__ == '__main__':
+=======
+
+if __name__ == '__man__':
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
     prod = ProductDescpMannual()
     prod.dataloader_preprocess()
     dataset = TextDatasetBert()

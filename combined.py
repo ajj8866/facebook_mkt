@@ -232,8 +232,11 @@ class ImageTextDataset(torch.utils.data.Dataset):
             prod_description = self.model(**bert_encoded).last_hidden_state.swapaxes(1,2)
 
         self.prod_description = prod_description.squeeze(0)
+<<<<<<< HEAD
         # print('Text index value', self.prod_description)
         # print('Text index size', self.prod_description.size())
+=======
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
         return self.image[idx], self.prod_description, self.y[idx]
     
     def __len__(self):
@@ -289,7 +292,10 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
         print('Starting epoch number: ', epoch_num)
         for phase in ['train', 'eval']:
             if phase=='train':
+<<<<<<< HEAD
                 print('Phase right after phase iteration is : ', phase) #Still train
+=======
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
                 combined_model.train()
             else:
                 combined_model.eval()
@@ -303,8 +309,11 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase=='train'):
+<<<<<<< HEAD
                     print('Input chunk size: ', text_chunk.size())
                     print('Input chumnk tensor: ', text_chunk)
+=======
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
                     outputs=combined_model(images_chunk, text_chunk)
                     preds = torch.argmax(outputs, dim=1)
                     # print('Labels:\n', labels)
@@ -346,4 +355,8 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     return combined_model
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     train_model(y='major_category_encoded', major=True,cutoff_lim=50, img='image', split_in_dataset=True)
+=======
+    train_model(y='major_category_encoded', major=True,cutoff_lim=50, img='image', split_in_dataset=True)
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde

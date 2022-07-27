@@ -19,6 +19,10 @@ trains_test.xlsx
 runs
 excel_sk.ipynb
 words.ipynb
+<<<<<<< HEAD
+=======
+Dockerfile
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
 __pycache__
 merged_dataset.ipynb
 aws_tool.py
@@ -32,8 +36,13 @@ word2vec.ipynb
 word2vec.model
 fb_train_gdrivev2.ipynb
 image_text_combined.pt
+<<<<<<< HEAD
 product_model.pt
 .DS_Store
 image_text_combined.pt
 product_model.pt
 prodcut_model.pt
+=======
+prodcut_model.pt
+.DS_Store
+>>>>>>> aec0a94e116a4de964e5f4f1cef8881643d60fde
