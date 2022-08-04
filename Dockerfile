@@ -2,12 +2,23 @@ FROM python:3.10.5-slim-buster
 
 WORKDIR  /app
 
-COPY . /app
+RUN apt-get update
 
+RUN apt-get install \
+    'ffmpeg'\
+    'libsm6'\
+    'libxext6' -y
+
+COPY . /app
 
 EXPOSE 8080
 
+RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install --upgrade pip
+
 RUN pip install -r requirements.txt
 
-#pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu 
-CMD ["python", "combined.py"]
+
+
+CMD ["python", "model_api.py"]

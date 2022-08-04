@@ -1,0 +1,13 @@
+version: '3.4'
+services:
+  model_api:
+    image: ahmadj8/model_api
+    build: .
+    ports:
+      - 8080:8080
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    
+
