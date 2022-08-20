@@ -61,3 +61,26 @@ Uses sklearn's SVC (support vector classifier) to check whether images, stored a
 - Perforamcne on testing data summarised using classficiation report, accuracy score and a heatmap for accuracy score to provide a visual representation of classifications as shown below. Numbers along the diagnol represent the correct predictions made
 
 ![image](https://user-images.githubusercontent.com/100163231/169671098-a5434e1b-8f20-44b1-a523-d254292112a9.png)
+
+## pytorch_scratch_classification.py
+### Overview
+Used to construct the pytorch dataset inheriting from pytorch's torch.utils.Dataset class, in addition to a class called Net used for diagnostic purposes to ensure the dataset class works as expected. 
+
+### Dataset Class
+Takes in two arguments, X and y corresponding to the image (passed into the model as an explanatory variable) and category (passed into the model as the dependent/target variable)
+- X: May be either 'image', in which case the image is passed in raw format or 'image_array' in which case the image is preprocessed via and subsequently converted into a numpy array or 'image_array' in which case the image already preprocessed to a numpy within the clean_tabular script is used
+- y: Can be either 'major_category_encoded' should the user wish to classify the major categories or 'minor_category_encoded'. Please note the latter is likely to be more inaccurate on account of the sparse nature of certain categories and the added complexity 
+- cutoff_freq: Only valid if using the 'minor_categories' option for y. Specifies the minimum number of times a minor category must appear in the dataset. Should a given category appear less than the number of times specified the data is dropped from the dataset for analysis
+- img_dir: Only valid if using the 'image' option for X. Path to directory containing image
+- training_proportion: The proportion of the datset taken to be the training proportion 
+- is_test: If True the dataset generated corresponds to the testing data and if set to False the dataset generate corresponds to the training data. Should the user not wish to segregate the data into train and test within the Dataset class set the value to None
+- img_size: Size of the image required to be used within the model
+
+| Method Name | Method Description |
+| --- | --- |
+| __init__ | Segregates the data depending on if is_test set to True, False or None. <br /> If y argument is set to minor_category_encoded the dataset is adjusted based on the cutoff_freq argument and a new scaler instantiated | __getitem__ | Instructs the Dataset class on how to index a given image and product category |
+| __len__ | Sets the length of the datatset |
+
+
+
+
