@@ -9,7 +9,6 @@ from clean_tabular import CleanData, CleanImages, MergedData
 from collections import Counter, defaultdict
 from ntpath import join
 from torch.utils.data import SubsetRandomSampler
-from turtle import forward
 import numpy as np
 import pandas as pd
 from pytest import param
