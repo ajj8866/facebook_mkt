@@ -11,15 +11,25 @@ Scripts Included
 - pytorch_scratch_classification.py
 
 ## clean_tabular.py
-Constructs **CleanData** base class used in subsequency scripts. Used to extract data containing product details for items listed on facebook marketplace, initially contained in a json file within the data_files directory. The specific json file passed in must be passed in as a list even if only one table is to be used. Given the json files are likely to either contain product information such as the ID, description etc., or image informatin relevant to such products the class has functionality allowing for merging should any further json files containing new information be provided.  
+Constructs classes used in subsequent scripts pertainign to the preprocessing of data and contains three classes
+- CleanData
+- CleanImages
+- MergedData
 
-In addition given the preprocessing relevant for the product version of json files is relatively straightforward the price column is altered  allowing for price data to be immediately interpretted as a float in python and the `expand_category` method is applied should any future attempt be made to refine product classfication on a finer basis.
+### Classes
+#### CleanData
+
+Used to extract data containing product details for items listed on facebook marketplace, initially contained in a json file within the data_files directory. The specific json file passed in must be passed in as a list even if only one table is to be used. Given the json files are likely to either contain product information such as the ID, description etc., or image information relevant to such products the class has functionality allowing for merging should any further json files containing new information be provided.  
+
+On instantiation of the class the price column is preprocessed into a format whereby python may interpret it as a float and the categories columns is decomposed into two columns with one correspodning to the major category and the other the minor category with a label encoder fit and applied to both column types. 
 
 Description of the methods are provided as follows:
 
 | Method Name | Method Description |
 | --- | --- |
-| try_merge | Attempts to merge two dataframes formed as part of the same instance into a single dataframe which is by default named combined |
+| expand_category | Given the category column in its raw form displays the category type including both the major and minor category this method allocates the major and minor category to individual columns <br /> In addition the encoder (using sklearn's LabelEncoder)  is fit the the transformation applied to both category types|
+| traim_data | Trims off all observations with a price above a given quantile specified by the user |
+| try_merge | Attempts to merge two dataframes formed as part of the same instance into a single dataframe which is by default named combined, should the individual dataframe be of identical structure |
 | get_na_vals | List the observations of a single dataframe instantiated as the class instance |
 | __repr__ | Using the print method the class lists all dataframes instantiated as part of the class in addition to the relevant columns within each dataframe |
 | to_excel | Transfers all data in the dataframes to an excel table. Mainly for the purposes of convenience in examining data manually should the need arise |
@@ -29,8 +39,8 @@ Description of the methods are provided as follows:
 | trim_data | Distils outliers based on price. By default any items with a price greater than the 95th quantile is removed though this may be adjusted |
 | allTables | A class method constructing an instance of the class using all files within the data_files folder |
 
-## clean_images.py
-Constructs **CleanImages** class which inherits from CleanData. Used specifically for images version of json files with methods used to customise images to different specifications. 
+#### CleanImages
+Used specifically for images version of json files with methods used to customise images to different specifications. 
 
 | Method Name | Method Description |
 | --- | --- |
