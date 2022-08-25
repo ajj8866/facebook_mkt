@@ -119,21 +119,69 @@ Demo model used for diganostic purposes pertaining to the Dataset class. The act
 - Based on the above paramters adjust resnet50's pretrained model to construct a model attempting to correctly identify the prodct category a given product belongs to given only its image
 
 ### Functions and Variables
-#### res_model
-Establishes resent50's pretrained model as the base model freezing all layers so that the gradients corresponding to such layers are not adjuste over the course of the training process
 
-<img width="483" alt="image" src="https://user-images.githubusercontent.com/100163231/186488027-05895085-aa83-4f47-b352-2f0ad543494b.png">
+#### Functions
 
-#### get_label_lim
+##### get_label_lim
 Stub function used in the event the category type required for classification is the minor category. Based on the minimum number of times a category must appear in the dataset, as stipulated by the `cutoff_lim` argument outputs an integer corresponding to the number of unique minor categories existing within the dataset 
 
 The ouput given by the function is used to calculate the total number of classifications possible for the final layer of the model.
 
-#### get_loader
+##### get_loader
 Uses the Dataset constructed in the `pytorch_scratch_classification` script to construct a dataloader, enabling for the passing of observations using batches into the model during the training and testing phase. Takes in the following arguments:
 - `img`: May be either `image` or `image_array` depending on whether the user would like to pass in the images from the data_files directories or as a numpy array using the `MergedData` class (implicitly used in the Dataset class)
 - `batch_size`: Number of observations to be passed in during each iteration of the model training and testing loop
 - `split_in_dataset`: If set to True splits the dataset into training and testing phase within the Dataset class applying a selection of random flips and rotations to the training portion. If set to False the the `randoom_split` method is applied to the dataloader. In the case of setting the parameter to True the random set of transformations applied to the training phase ensure the issue of overfititing is mitigated and there are, in effect, a greater variety of image to train from but the code will run slower. In the case the parameter is set to False, though the aforementioned issues are not addressed the code will run faster
+
+#### Variables
+
+##### res_model
+Establishes resent50's pretrained model as the base model freezing all layers so that the gradients corresponding to such layers are not adjuste over the course of the training process
+
+<img width="483" alt="image" src="https://user-images.githubusercontent.com/100163231/186488027-05895085-aa83-4f47-b352-2f0ad543494b.png">
+
+##### opt
+Optimizer to be used in model. By default set to SGD
+
+##### criterion
+Loss type to use (by default set to `nn.CrossEntropyLoss()`)
+
+##### scheduler
+Learning rate scheduler designed to adjust the laerning rate as the number of epochs progress. By default set to `MultiStepLR` multiplying the initial learning rate by a factor (`gamma` argument) of 0.3 at epochs number 5, 10, 15, 20, 25 and 30
+
+##### class_encoder
+Encoder for categories to be predicted within the model. Associated keys (category names) and values (integer respresentation of category names) are stored in `classes` and `class_values` variables, respectively. 
+
+##### classes
+List of unique categories to be predicred by the model 
+
+##### class_values
+List of encoded values of the categories taken as target variables of the model 
+
+##### plot_classes_preds
+Function designed to display the images, actual category classification associated with such images and category classification as predicted by the model (along with associated probabilities) for the first three obsevations passed in for each batch during the training phase of the model <br /> `show_image` and `images_to_proba` are stub functions passed into this function
+
+### Primary Function (train_mode)
+
+#### Functionality and Purpose
+- Takes in observations passed in using batches output by the `get_loader` function, randomly splitting the dataset into a training and testing phase
+- Having split the dataset into a training and testing phase iterates through each dataset
+  - For training phase the loss calculated for each batch and weights corresponding to the layer adjusted commensurate with the learning rate 
+  - For testing phase the gradients are frozen and associated metrics simply calculated based on the weights derived in the prior training phase
+- On the backend tensorboard graphs depicting the progression of loss and accuracy with epochs are generated 
+- The 'best' model weights are selected based on the performance of the testing set and eventually returned as the final output 
+
+#### Arguments 
+- `model`: Base model to use during the iteration process (by default equal to `res_model`
+- `optimizer`: Optimiser to use (by default set to `opt`)
+- `loss_type`:  Loss metric to use (by default set to `criterion`)
+- `num_epochs`: Number of epochs to use
+- `model_scheduler`: Learning rate scheduler to use
+- `batch_size`: Batch size to pass in
+- `image_type`: Must be one of `"image_array"` or `"image"` depending on model should use actual images or their numpy representation (processed using the `Dataset` class)
+- `split_in_datset`: Boolean variable. If set to True the dataset is split within the `Dataset` class and a series of random flips and rotations applied to the training dataset. If set to False the dataset is split within the `get_loader`function and identical transformations applied to both the training and testing set but model runs faster
+
+
 
 
 
