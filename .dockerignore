@@ -2,6 +2,7 @@ dum.py
 discarded_temp_code.py
 detailed_prod_clean.ipynb
 *.jpg
+*.csv
 svm_sketchpad.ipynb
 Final_Data_*.xlsx
 sketch*
@@ -39,4 +40,4 @@ README.md
 linear_regression.ipynb
 svm_image_regression.ipynb
 dataload_wrd2vec.ipynb
-
+*.pem

@@ -19,6 +19,7 @@ trains_test.xlsx
 runs
 excel_sk.ipynb
 words.ipynb
+*.pem
 __pycache__
 merged_dataset.ipynb
 aws_tool.py

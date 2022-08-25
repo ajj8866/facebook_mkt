@@ -1,6 +1,6 @@
 boto3==1.21.18
 contractions==0.1.68
-fastapi==0.79.1
+fastapi==0.80.0
 gensim==4.2.0
 matplotlib==3.5.1
 nltk==3.7

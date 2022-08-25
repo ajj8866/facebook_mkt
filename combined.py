@@ -62,17 +62,25 @@ from torchvision.transforms import ToTensor
 from torchvision import transforms
 
 def get_label_lim(df=None, cutoff_lim = 20):
-    '''Gets the number of unique labels remaining in the dataset'''
+    '''
+    Gets the number of unique labels remaining in the dataset when using minor category as a prediction variable subject 
+    to whether the category occurs at least the numbre of times specified in the cutoff_lim argument specified by the user
+    df: Dataframe containing the category columns .By default uses the dataframe derived instantiating the MergedData class 
+        from the clean_tabular script
+    cutoff_lim: The minimum number of times a category must appear in dataset. Must be integer 
+
+    Returns the number of unique categories remaining in the dataset
+    '''
     if df is None:
-        merged_class = MergedData()
-        merged_df = merged_class.merged_frame
+        merged_class = MergedData() # Instantiated MergedData class
+        merged_df = merged_class.merged_frame # Set the dataframe to be used to be equal to the merged_frame attribute from the MergedData class
     else:
         merged_df = df.copy()
     merged_df.dropna(inplace=True)
-    lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count()
-    filt = lookup_group[lookup_group>cutoff_lim].index
-    merged_df = merged_df[merged_df['minor_category_encoded'].isin(filt)]
-    print(len(merged_df['minor_category_encoded'].unique()))
+    lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count() # Construct new dataframe with the index equal to the unique categories and values equal to the number of times the category appears in dataset
+    filt = lookup_group[lookup_group>cutoff_lim].index # Obtains a list of categories from lookup_group, dropping those appearing an insufficient number of times
+    merged_df = merged_df[merged_df['minor_category_encoded'].isin(filt)] # Uses the list derived in the line above to filter the primary dataframe
+    print(len(merged_df['minor_category_encoded'].unique())) 
     return len(merged_df['minor_category_encoded'].unique())
 
 

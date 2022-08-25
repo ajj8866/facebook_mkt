@@ -11,7 +11,10 @@ from nltk import PorterStemmer
 from nltk.stem import WordNetLemmatizer
 import nltk
 from nltk.corpus import stopwords
+from nltk.corpus import wordnet
 nltk.download('omw-1.4')
+nltk.download('stopwords')
+nltk.download('wordnet')
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pickle
@@ -198,36 +201,44 @@ class ProductDescpMannual(CleanData):
         return self.product_frame, product_encoder, product_decoder
 
 class TextDatasetBert(torch.utils.data.Dataset):
+    '''
+    Uses pytorch's Dataset module to instruct model how to identify the lenght of total dataset and index individual observations. 
+
+    Given model of choice is Bert uses a pre-trained Bert model to yield 
+    '''
     def __init__(self, max_length=50, min_count=2):
-        prod = ProductDescpMannual()
-        full_word_ls, _ = prod.clean_prod()
+        prod = ProductDescpMannual() # Instantiates ProdductDescMannual class 
+        full_word_ls, _ = prod.clean_prod() # Uses instance of class defined in line above to yield a list of all preprocssed product description words 
         print(prod.product_frame['product_description'].head())
     
         # current_vocab = prod.full_word_set
         # currnet_corpus = prod.full_word_ls
         # current_vocab_size = len(current_vocab) + 1
         # self.product_df, self.mannual_word_encoder, self.mannual_word_decoder = prod.dataloader_preprocess()
-        self.product_df = prod.product_frame
+        self.product_df = prod.product_frame # Set the product_df attribute to equal the entirety of the Products dataframe (using JSON file) (Attribute inheritied from class CleanData)
 
 
-        self.label_encoder = prod.major_map_encoder
-        self.label_decoder = prod.major_map_decoder
-        self.labels = self.product_df['major_category_encoded'].to_list()
+        self.label_encoder = prod.major_map_encoder # Selts the label_encoder attribute to equal the major_map_encoder attributed (inherited from CleanData class)
+        self.label_decoder = prod.major_map_decoder # Selts the label_decoder attribute to equal the major_map_decoder attributed (inherited from CleanData class)
+        self.labels = self.product_df['major_category_encoded'].to_list() # Sets the encoded values of the products dataframe to equal the labels attribute
 
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.model = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=True)
         self.max_length = max_length
 
-        product_description_counter = Counter(full_word_ls)
-        main_ls = []
+        product_description_counter = Counter(full_word_ls) # Converts the list of all words into a dictionary with each word constituting the key and the value constituting the number of times the word has appeared in the entirety of the products description column 
+        main_ls = [] 
+
+        # Iterates through each observation in the product_description column of the dataframe. Within each observation the text content is split into a list. Should a word not occur more than or 
+        # equal to the number of times specfied by the min_count argument the word is ommited. The remaing words are retained and the filtered version of prodcut_deescription column replaces the old
+        # version 
         for i in self.product_df['product_description'].copy():
-            temp_ls = i.split()
+            temp_ls = i.split() 
             temp_ls = [i for i in temp_ls if product_description_counter[i]>min_count]
             main_ls.append(' '.join(temp_ls))
         self.product_df['product_description'] = main_ls
         self.product_descriptions = self.product_df['product_description'].to_list()
         
-
     def __getitem__(self, idx):
         label = torch.as_tensor(self.labels[idx])
         descript = self.product_descriptions[idx]

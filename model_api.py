@@ -12,7 +12,6 @@ from torch.utils.data import SubsetRandomSampler
 import numpy as np
 import pandas as pd
 from pytest import param
-from sqlalchemy import column, desc
 import xlsxwriter
 import os
 import seaborn as sns
@@ -20,7 +19,10 @@ from nltk import PorterStemmer
 from nltk.stem import WordNetLemmatizer
 import nltk
 from nltk.corpus import stopwords
+from nltk.corpus import wordnet
+nltk.download('wordnet')
 nltk.download('omw-1.4')
+nltk.download('stopwords')
 from pathlib import Path
 import matplotlib.pyplot as plt
 import re
