@@ -120,7 +120,7 @@ class DescriptionClassifier(Module):
         self.main = nn.Sequential(nn.Conv1d(input_size, 512, kernel_size=3, stride=1, padding=1), nn.Dropout(p=0.2),nn.LeakyReLU(inplace=True),  MaxPool1d(kernel_size=2, stride=2), 
         nn.Conv1d(512, 256, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True), MaxPool1d(kernel_size=2, stride=2), 
         nn.Conv1d(256, 64, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace = True), nn.AvgPool1d(kernel_size=2, stride=2), 
-        nn.Conv1d(64, 32, kernel_size=3, stride=1, padding=1), nn.LeakyReLU(inplace=True), nn.Flatten(), nn.Linear(96, 128), nn.Tanh(),nn.Linear(128, final_layer_num))
+        nn.Conv1d(64, 32, kernel_size=3, stride=1, padding=1), nn.LeakyReLU(inplace=True), nn.Flatten(), nn.Linear(160, 128), nn.Tanh(),nn.Linear(128, final_layer_num))
     
     def forward(self, inp):
         x = self.main(inp)
@@ -130,13 +130,16 @@ class DescriptionClassifier(Module):
 '''COMBINED MODEL'''
 '''Combined Model Classifier'''
 class CombinedModel(nn.Module):
-    def __init__(self, num_classes, input_size=768) -> None:
+    def __init__(self, num_classes, img_type,input_size=768) -> None:
         super(CombinedModel, self).__init__()
+        self.img_type= img_type
         self.image_classifier = ImageClassifier
         self.text_classifier = DescriptionClassifier(input_size=input_size)
         self.main = nn.Sequential(nn.Linear(2*final_layer_num, num_classes))
 
     def forward(self, image_features, text_features):
+        if self.img_type=='image_array':
+            image_features=  torch.from_numpy(np.transpose(image_features.numpy(), (0, 3, 1, 2))).float()
         image_features = self.image_classifier(image_features)
         text_features = self.text_classifier(text_features)
         combined_features = torch.cat((image_features, text_features), 1)
@@ -275,7 +278,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     else:
         assert y=='minor_category_encoded'
     print('Number of unique categories remaining in training model: ', num_out(major=major, cutoff_lim=cutoff_lim))
-    combined_model = CombinedModel(input_size=768, num_classes=num_out(major=major, cutoff_lim=cutoff_lim))
+    combined_model = CombinedModel(input_size=768, num_classes=num_out(major=major, cutoff_lim=cutoff_lim), img_type=img)
     optimizer =  combined_optimizer(combined_model.parameters(), lr=initial_lr)
     criterion = loss()
     if comb_scheduler is None:
@@ -309,7 +312,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
 
                 with torch.set_grad_enabled(phase=='train'):
                     print('Input chunk size: ', text_chunk.size())
-                    print('Input chumnk tensor: ', text_chunk)
+                    # print('Input chumnk tensor: ', text_chunk)
                     outputs=combined_model(images_chunk, text_chunk)
                     preds = torch.argmax(outputs, dim=1)
                     # print('Labels:\n', labels)
@@ -351,4 +354,4 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     return combined_model
 
 if __name__ == '__main__':
-    train_model(y='major_category_encoded', major=True,cutoff_lim=50, img='image', split_in_dataset=True)
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)

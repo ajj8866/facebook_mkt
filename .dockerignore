@@ -33,7 +33,6 @@ word2vec.ipynb
 word2vec.model
 fb_train_gdrivev2.ipynb
 .DS_Store
-image_text_combined.pt
 prodcut_model.pt
 product_model.pt
 README.md
