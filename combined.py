@@ -24,6 +24,7 @@ import contractions
 from pathlib import Path
 from skimage.color import rgb2gray
 from skimage.filters import sobel
+import logging
 from skimage.io import imread, imshow
 from skimage import io
 import json
@@ -61,6 +62,23 @@ from sklearn.utils import shuffle
 from torchvision.transforms import ToTensor
 from torchvision import transforms
 
+#####################################################################################################################
+
+logging.basicConfig(filename='main_logger.log', level=logging.WARNING)
+model_logger= logging.getLogger(__name__)
+model_logger.setLevel(logging.INFO)
+
+model_stream_handler= logging.StreamHandler()
+model_log_file= logging.FileHandler('mod_file.log')
+model_log_formatter= logging.Formatter('Line Number:   %(lineno)d: Filename   %(filename)s  Message: %(message)s  Module Name:	%(module)s')
+
+model_stream_handler.setFormatter(model_log_formatter)
+model_log_file.setFormatter(model_log_formatter)
+
+model_logger.addHandler(model_log_file)
+
+#####################################################################################################################
+
 def get_label_lim(df=None, cutoff_lim = 20):
     '''
     Gets the number of unique labels remaining in the dataset when using minor category as a prediction variable subject 
@@ -91,18 +109,29 @@ plt.rc('axes', titlesize=12)
 final_layer_num = 24
 
 '''IMAGE MODEL'''
-prod_dum = CleanData()
-class_dict = prod_dum.major_map_encoder.keys()
-classes = list(class_dict)
-class_values = prod_dum.major_map_encoder.values()
-class_encoder = prod_dum.major_map_encoder
+prod_dum = CleanData() # Instantiate CleanData class
+class_dict = prod_dum.major_map_encoder.keys() # Yield the keys for major category encoder (category names)
+classes = list(class_dict) 
+class_values = prod_dum.major_map_encoder.values() # Yield the value encoded values of categories
+class_encoder = prod_dum.major_map_encoder # Save encoder under variable name class encoder
 
 
+# Uses resnet50's pretrained image data freezing all rows with regards to propogating weight adjustments 
 ImageClassifier = models.resnet50(pretrained=True)
 for i, param in enumerate(ImageClassifier.parameters(), start=1):
     param.requires_grad=False
 
 def num_out(major=True, cutoff_lim = 30):
+    '''
+    Yields the number of categories to be calculated within the final layer of the  model depending on whether 
+    the model aims to calculate the major or minor categories and if calculating the minor categories the minimum number 
+    of time such a category must appear in the dataset
+
+    major: Boolean value. If set to true instruct model to predict major categories. Otherwise attempts to predict the minor 
+        categories
+    cutoff_lim: The minimum number of times a minor category must appear within the dataset in order for it to be considered
+        when running model 
+    '''
     if major==True:
         print(len(class_encoder))
         return len(class_encoder)
@@ -110,12 +139,21 @@ def num_out(major=True, cutoff_lim = 30):
         print(get_label_lim(cutoff_lim=cutoff_lim))
         return get_label_lim(cutoff_lim=cutoff_lim) 
 
+## Adjusts the final layer of resnet50's image classifier to make it compatible with inputs and outputs used within the model 
 ImageClassifier.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512, bias=True), nn.ReLU(inplace=True), nn.Dropout(p=0.2), nn.Linear(in_features=512, out_features=final_layer_num))
 
 
 '''TEXT MODEL'''
 class DescriptionClassifier(Module):
+    '''
+    Model for text processing inheriting from pytorch's nn.Modul. Takes in a given input size and unlike the previous
+    text classifier truncates the model so that the only layers right befoer the final layer considered
+    input_size: Size of input layer. Must be adjusted on the basis of dimensionality of matrices implicitly used during the propogation process in pytorch
+    '''
     def __init__(self, input_size=768):
+        '''
+        Defines the layers to subsequently be used over the course of the forward proceess
+        '''
         super(DescriptionClassifier, self).__init__()
         self.main = nn.Sequential(nn.Conv1d(input_size, 512, kernel_size=3, stride=1, padding=1), nn.Dropout(p=0.2),nn.LeakyReLU(inplace=True),  MaxPool1d(kernel_size=2, stride=2), 
         nn.Conv1d(512, 256, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True), MaxPool1d(kernel_size=2, stride=2), 
@@ -123,6 +161,9 @@ class DescriptionClassifier(Module):
         nn.Conv1d(64, 32, kernel_size=3, stride=1, padding=1), nn.LeakyReLU(inplace=True), nn.Flatten(), nn.Linear(160, 128), nn.Tanh(),nn.Linear(128, final_layer_num))
     
     def forward(self, inp):
+        '''
+        Forward phase of model. Takes in pytorch representation of text embedding to yield weights to be used within the neural network
+        '''
         x = self.main(inp)
         return x
 
@@ -130,6 +171,12 @@ class DescriptionClassifier(Module):
 '''COMBINED MODEL'''
 '''Combined Model Classifier'''
 class CombinedModel(nn.Module):
+    '''
+    Combines the final layers corresponding to both the image (ImageClassifier) and text (DescriptionClassifier)
+    num_classes: The number of classes to be predicted in the final layer. In the context of the main training model iteration the values is the output of the "num_out" function defined earlier
+    img_type: "image" if using actual images from data_files folder and "image_array" if using its numpy representation as in the dataframe
+    input_size: Number of input layers to use
+    '''
     def __init__(self, num_classes, img_type,input_size=768) -> None:
         super(CombinedModel, self).__init__()
         self.img_type= img_type
@@ -138,11 +185,11 @@ class CombinedModel(nn.Module):
         self.main = nn.Sequential(nn.Linear(2*final_layer_num, num_classes))
 
     def forward(self, image_features, text_features):
-        if self.img_type=='image_array':
-            image_features=  torch.from_numpy(np.transpose(image_features.numpy(), (0, 3, 1, 2))).float()
-        image_features = self.image_classifier(image_features)
+        image_features_cp= torch.clone(image_features).float()
+        model_logger.info('Image size within pytorch dataset: ', image_features.size())
+        image_features_cp = self.image_classifier(image_features_cp)
         text_features = self.text_classifier(text_features)
-        combined_features = torch.cat((image_features, text_features), 1)
+        combined_features = torch.cat((image_features_cp, text_features), 1)
         combined_features = self.main(combined_features)
         return combined_features
 
@@ -151,7 +198,14 @@ class ImageTextDataset(torch.utils.data.Dataset):
     def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', cutoff_freq=20, img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False, max_length=20, min_count=2):
         '''
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
-        y: Can be either 'major_category_encoded' or 'minor_category_encoded'
+        y: Can be either 'major_category_encoded' or 'minor_category_encoded'. 
+        cutoff_freq: The minimum number of times a given category must appear within the dataset in order for it to be considered by the model 
+        img_dir: The directory containing images if the "image" option passed into the X argument
+        img_size: Size of image to be used within model (by default 224 to be compatible with resnet50)
+        training_proportion: Proportion of data to be used as part of the trainign set (expressed as decimal )
+        is_test: Boolean value indicating whether the dataset corresponds to the test data (True), training data (False) or None in the event data is not split within this class in which case the entirety of the dataset is considered
+        max_length: The maximum length of each sentence to be used within the Bert model 
+        min_count: THe minimum number of times a given word must appear within the product description columns in order for it be considered within the parameters of the model
         '''
         ## Image Moel ##
         self.img_inp_type = X
@@ -159,18 +213,20 @@ class ImageTextDataset(torch.utils.data.Dataset):
         self.img_dir = img_dir
         self.img_size = img_size
         merge_class = MergedData()
-        merged_df = merge_class.merged_frame
-        filtered_df = merged_df.loc[:, ['image_id', 'id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
+        merged_df = merge_class.merged_frame # Uses merged_frame attribute of MergedData class to get dataframe mergingn both product and image information 
+        filtered_df = merged_df.loc[:, ['image_id', 'id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy() # Slices the image, id and encoded and decoded versions of either the major or minor product category columns (depending on whether y is input as "major_category_encoded" or "minor_category_encoded")
         filtered_df.dropna(inplace=True)
         ## Text Model 
-        products_description = ProductDescpMannual()
-        full_word_ls, _ = products_description.clean_prod()
-        self.product_df = products_description.product_frame
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.model = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=True)
+        products_description = ProductDescpMannual() 
+        full_word_ls, _ = products_description.clean_prod() # Uses clean_prod method of ProductDescpMannual class to preprocess
+        self.product_df = products_description.product_frame # Uses the product_frame attribute of ProductDescpMannual class to yield dataframe including the preprocessed product desription columns
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') # Associates Bert's pretrained tokenizer to the tokenizer atttribute
+        self.model = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=True) # Associate Bert's pretrained model with the model attribute
         self.max_length = max_length
-        product_description_counter = Counter(full_word_ls)
+        product_description_counter = Counter(full_word_ls) # Yields a dictionary with keys comprising of all unique words appearing in the product description column and values the number of times such words appear within the columns
         main_ls = []
+
+        # Strips out words which appear less than the number of times specified by the user in the min_count argument
         for i in self.product_df['product_description'].copy():
             temp_ls = i.split()
             temp_ls = [i for i in temp_ls if product_description_counter[i]>min_count]
@@ -178,6 +234,7 @@ class ImageTextDataset(torch.utils.data.Dataset):
         self.product_df['product_description'] = main_ls
         self.product_df = self.product_df.loc[:, ['id', 'product_description']]
         
+        # Derives a new encoder for minor categories depending if the "minor_category_encoded" option is chosen by stripping out the categories appearing less than the cutoff_freq argument set by user
         if y=='minor_category_encoded':
             lookup = filtered_df.groupby([y])[y].count()
             filt = lookup[lookup>cutoff_freq].index
@@ -189,6 +246,8 @@ class ImageTextDataset(torch.utils.data.Dataset):
         # print('Unique categories remaining in dataloader: ', filtered_df['minor_category_encoded'].unique())
     
         train_end = int(len(filtered_df)*train_proportion)
+
+        # Randomly samples the entire dataset splitting the values into a training and testing dataset
         if is_test is not None:
             filtered_df = filtered_df.sample(frac=1).reset_index(drop=True)
             if is_test == False:
@@ -211,6 +270,8 @@ class ImageTextDataset(torch.utils.data.Dataset):
         self.main_frame = filtered_df
         # print(self.main_frame.head())
         self.main_frame.to_excel(Path(Path.cwd(), 'data_files', 'letssee.xlsx'))
+
+        # Sets category encoder and decoder depending on which option (major or minor) user chooses
         self.new_category_encoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_encoder][0]
         self.new_category_decoder = [new_sk_encoder if y=='minor_category_encoded' else merge_class.major_map_decoder][0]
         self.label = self.main_frame[y]
@@ -221,6 +282,7 @@ class ImageTextDataset(torch.utils.data.Dataset):
     # Not dependent on index
     def __getitem__(self, idx): 
         'Image Slicer'
+        # As with original image classifier the last two transformeations within transforms.Compose must be transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         if self.img_inp_type == 'image':
             try:
                 self.image[idx] =  self.transformer(Image.open(os.path.join(self.img_dir, self.image[idx])))
@@ -236,13 +298,14 @@ class ImageTextDataset(torch.utils.data.Dataset):
                     self.image[idx] = self.image[idx]
 
         'Text Slicer'
+        # Uses the tokenizer set on instantiation of class to yield the tokenized version of words within product description
         descript = self.product_description[idx]
         bert_encoded = self.tokenizer.batch_encode_plus([descript], max_length=self.max_length, padding='max_length', truncation=True)
         bert_encoded = {key: torch.LongTensor(value) for key, value in bert_encoded.items()}
         with torch.no_grad():
             prod_description = self.model(**bert_encoded).last_hidden_state.swapaxes(1,2)
 
-        self.prod_description = prod_description.squeeze(0)
+        self.prod_description = prod_description.squeeze(0) # Removes first dimesion to make tensor compatible with model 
         return self.image[idx], self.prod_description, self.y[idx]
     
     def __len__(self):
@@ -251,8 +314,8 @@ class ImageTextDataset(torch.utils.data.Dataset):
 '''COMBINED DATALOADER'''
 def get_loader(img = 'image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8, max_length=30, min_count=4, cutoff_freq=30):
     if split_in_dataset == True:
-        train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y,is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
-        test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y,is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
+        train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y, is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
+        test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y, is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
         dataset_dict = {'train': train_dataset, 'eval': test_dataset}
         data_loader_dict = {i: DataLoader(dataset_dict[i], batch_size=batch_size, shuffle=True) for i in ['train', 'eval']}
         return train_dataset.dataset_size, test_dataset.dataset_size, data_loader_dict
@@ -311,10 +374,15 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase=='train'):
-                    print('Input chunk size: ', text_chunk.size())
+                    model_logger.info('Input image size BEFORE FORWARD: ', images_chunk.size())
+                    model_logger.info('Current phase: ', phase)
+                    if img == 'image_array':
+                        images_chunk= images_chunk.permute(0, 3, 1, 2)
                     # print('Input chumnk tensor: ', text_chunk)
                     outputs=combined_model(images_chunk, text_chunk)
+                    model_logger.info('Ouptut size AFTER FORWARD within loop: ', outputs.size())
                     preds = torch.argmax(outputs, dim=1)
+                    model_log_file.flush()
                     # print('Labels:\n', labels)
                     # print('Predictions:\n', preds)
                     loss = criterion(outputs, labels)
@@ -323,7 +391,7 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
                         optimizer.step()
 
                 if batch_num%10==0:
-                    print('Phase just before tensorboard writer: ', phase)
+                    model_logger.debug('Phase just before tensorboard writer: ', phase)
                     writer.add_scalar(f'Accuracy for phase {phase} by batch number', preds.eq(labels).sum()/batch_size, batch_num)
                     writer.add_scalar(f'Average loss for phase {phase} by batch number', loss.item(), batch_num)
             
@@ -354,4 +422,4 @@ split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_arr
     return combined_model
 
 if __name__ == '__main__':
-    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)

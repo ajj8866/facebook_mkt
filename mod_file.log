@@ -1,0 +1,189 @@
+  Message: 'Ouptut size AFTER FORWARD within loop: '
+Arguments: (torch.Size([9, 13]),)
+Size of dataset for phase train 9929
+Train Loss: 2.0783 Acc: 0.3021
+Current learning rate:  0.1
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 350, in train_model
+    model_logger.info('Input image size BEFORE FORWARD: ', images_chunk.size())
+Message: 'Input image size BEFORE FORWARD: '
+Arguments: (torch.Size([32, 3, 224, 224]),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 350, in train_model
+    model_logger.info('Input image size BEFORE FORWARD: ', images_chunk.size())
+Message: 'Input image size BEFORE FORWARD: '
+Arguments: (torch.Size([32, 3, 224, 224]),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 351, in train_model
+    model_logger.info('Current phase: ', phase)
+Message: 'Current phase: '
+Arguments: ('eval',)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 351, in train_model
+    model_logger.info('Current phase: ', phase)
+Message: 'Current phase: '
+Arguments: ('eval',)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 353, in train_model
+    outputs=combined_model(images_chunk, text_chunk, epoch_num)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 171, in forward
+    model_logger.info('Image size within pytorch dataset: ', image_features.size())
+Message: 'Image size within pytorch dataset: '
+Arguments: (torch.Size([32, 3, 224, 224]),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 353, in train_model
+    outputs=combined_model(images_chunk, text_chunk, epoch_num)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 171, in forward
+    model_logger.info('Image size within pytorch dataset: ', image_features.size())
+Message: 'Image size within pytorch dataset: '
+Arguments: (torch.Size([32, 3, 224, 224]),)
+Dataset epoch number:  1
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 353, in train_model
+    outputs=combined_model(images_chunk, text_chunk, epoch_num)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 176, in forward
+    model_logger.info('Image size within Dataset after applying transpose: ', image_features_cp.size())
+Message: 'Image size within Dataset after applying transpose: '
+Arguments: (torch.Size([32, 224, 3, 224]),)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 1083, in emit
+    msg = self.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 927, in format
+    return fmt.format(record)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 663, in format
+    record.message = record.getMessage()
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/logging/__init__.py", line 367, in getMessage
+    msg = msg % self.args
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 353, in train_model
+    outputs=combined_model(images_chunk, text_chunk, epoch_num)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 176, in forward
+    model_logger.info('Image size within Dataset after applying transpose: ', image_features_cp.size())
+Message: 'Image size within Dataset after applying transpose: '
+Arguments: (torch.Size([32, 224, 3, 224]),)
+Traceback (most recent call last):
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 396, in <module>
+    train_model(y='major_category_encoded', major=True, cutoff_lim=50, img='image_array', split_in_dataset=True, num_epochs=50, step_interval=4, max_length=40)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 353, in train_model
+    outputs=combined_model(images_chunk, text_chunk, epoch_num)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/Downloads/AICore/facebook_mkt/combined.py", line 179, in forward
+    image_features_cp = self.image_classifier(image_features_cp)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torchvision/models/resnet.py", line 283, in forward
+    return self._forward_impl(x)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torchvision/models/resnet.py", line 266, in _forward_impl
+    x = self.conv1(x)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/conv.py", line 447, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/Users/aj8/opt/anaconda3/envs/scaper_env/lib/python3.9/site-packages/torch/nn/modules/conv.py", line 443, in _conv_forward
+    return F.conv2d(input, weight, bias, self.stride,
+RuntimeError: Given groups=1, weight of size [64, 3, 7, 7], expected input[32, 224, 3, 224] to have 3 channels, but got 224 channels instead
+(scaper_env) aj8@Ghulams-MacBook-Pro facebook_mkt % 
