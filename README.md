@@ -65,7 +65,7 @@ Contains the following attributes:
 - `major_map_encoder`: Encoder for major product category 
 - `major_map_decoder`: Decoder for major product category 
 
-<u>Note</u>: Minor category and decoder not set withiin this class given the specifics would depend on user input when instantiating the mnodel. As such the minor encoder and decoder is set during the model execution phase
+<u>Note</u>: Minor category and decoder not set within this class given the specifics would depend on user input when instantiating the mnodel. As such the minor encoder and decoder is set during the model execution phase
 
 ## linear_regression.ipynb 
 Basic attempt at inferring price using a generic linear regression model with product categories as dummy variables 
@@ -161,7 +161,7 @@ List of encoded values of the categories taken as target variables of the model
 ##### plot_classes_preds
 Function designed to display the images, actual category classification associated with such images and category classification as predicted by the model (along with associated probabilities) for the first three obsevations passed in for each batch during the training phase of the model <br /> `show_image` and `images_to_proba` are stub functions passed into this function
 
-### Primary Function (train_mode)
+### Primary Function (train_model)
 
 #### Functionality and Purpose
 - Takes in observations passed in using batches output by the `get_loader` function, randomly splitting the dataset into a training and testing phase
@@ -181,7 +181,13 @@ Function designed to display the images, actual category classification associat
 - `image_type`: Must be one of `"image_array"` or `"image"` depending on model should use actual images or their numpy representation (processed using the `Dataset` class)
 - `split_in_datset`: Boolean variable. If set to True the dataset is split within the `Dataset` class and a series of random flips and rotations applied to the training dataset. If set to False the dataset is split within the `get_loader`function and identical transformations applied to both the training and testing set but model runs faster
 
-
-
+## text_model
+### Overview 
+- Sets up a product description class for preprocessing data in the product description column by: 
+  -using the `nltk`'s library to lemmitize (converting words like becoming to become, running to run, mice to mouse etc.) individual word, remove punctuation the likes of exclamation marks, colons and fix contraction (words like didn't to did not, wouldn't to would not etc.) and yield all words in lower case so that the model may correcty identify words and the corpus boasts consistent usage of words with identical meaning
+   - Obtain a dictionary comprising of all unique words within the product description column and the number of times each unique word appears within the column
+   - An additional method (`dataloader_preprocess`) to yield the product description column in a format compatible with the skipgram model. Given the extended period of time this method took the skipgram methodlogy was subsequently discarded in favour of a pre-traned Bert model
+ - Set up a dataset called `TextDatasetBert` using a pre-trained Bert model and the tokens corresponding to such a model to obtain 
+ 
 
 
