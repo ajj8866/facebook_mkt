@@ -90,7 +90,7 @@ Uses sklearn's SVC (support vector classifier) to check whether images, stored a
 
 ## pytorch_scratch_classification.py
 ### Overview
-Used to construct the pytorch dataset inheriting from pytorch's torch.utils.Dataset class, in addition to a class called Net used for diagnostic purposes to ensure the dataset class works as expected. 
+Used to construct the pytorch dataset inheriting from pytorch's `torch.utils.Dataset` class, in addition to a class called Net used for diagnostic purposes to ensure the dataset class works as expected. <br />The class constructed from pytorch's primitive `Dataset` class is used to store the individual sample explanatory variables and their corresponding target variables. The user is subsequently passed into pytorch's `DataLoader` class in the `pytorch_image_transfer_classification` script which iterates over the individual samples stored in the custom class inheriting from pytorch's `torch.utils.Dataset`
 
 #### Dataset Class
 Takes in the following arguments: 
@@ -189,5 +189,16 @@ Function designed to display the images, actual category classification associat
    - An additional method (`dataloader_preprocess`) to yield the product description column in a format compatible with the skipgram model. Given the extended period of time this method took the skipgram methodlogy was subsequently discarded in favour of a pre-traned Bert model
  - Set up a dataset called `TextDatasetBert` using a pre-trained Bert model and the tokens corresponding to such a model to obtain 
  
+ ### BERT (Bidirectional Encoder Representations from Transformer) Model  
+ - Avails of the Recurrnet Neural Network Model (RNN) to construct layers used within the neural network. Unlike CNN's, RNNs focus on estimating sequences such as time series by taking the outputs derived from previous layers as inputs into the subsequent layers. In the current context of deciphering the product description column of the dataset to see if it may be used to predict the relevant product category being referred to the model takes into account the syntatic nature of languages in general, converting each sentence into a vector of fixed length. Intuitively it stands to reason products of a given category would correspond to a product description having a similar sequence of words e.g., games would have words like PS4, computes words like CPU and phone words like iphone. By encoding the sentence containing such words into a vector, the vector representation of such encodings would be similar as given by the cosine of the angle between the two vectors; the cosine of 0 is equal to 1 to two identical vectors would have an angle of 0 between them yielding a similarity of 1. 
+ 
+### Classes
+#### ProductDescpClass
+Used to preproces the column product description within dataframe to yield individual product descriptions in a format appropriate for them to be passed into any NLP models
+
+| Method Name | Method Description |
+| --- | --- |
+| clean_prod | Iterates through each individual observation in the product description column applying a series of preprocessing steps such as stripping out uneeded punctuation, fixing contractions (e.g., didn't to did not, couldn't to could not) and lemmitizations (e.g, running to run, fixing to fix) before converting all characters to lower case |
+| word_freq | Yields a dictoinary using the individual words occuring over the entirety of the product description column as keys and the number of times each unique word occurs within the dataset as values. <br />If an integer is passed into the `num_items` argument the dictionary is truncated to the integer value specified by the argument resulting in only the most frequently occuring words remaining wthin the dictionary | 
 
 
