@@ -83,11 +83,14 @@ def get_label_lim(df=None, cutoff_lim = 20):
     '''
     Gets the number of unique labels remaining in the dataset when using minor category as a prediction variable subject 
     to whether the category occurs at least the numbre of times specified in the cutoff_lim argument specified by the user
+
+    Arguments
+    -------------
     df: Dataframe containing the category columns .By default uses the dataframe derived instantiating the MergedData class 
         from the clean_tabular script
     cutoff_lim: The minimum number of times a category must appear in dataset. Must be integer 
 
-    Returns the number of unique categories remaining in the dataset
+    Returns: The number of unique categories remaining in the dataset
     '''
     if df is None:
         merged_class = MergedData() # Instantiated MergedData class
@@ -127,10 +130,14 @@ def num_out(major=True, cutoff_lim = 30):
     the model aims to calculate the major or minor categories and if calculating the minor categories the minimum number 
     of time such a category must appear in the dataset
 
+    Arguments
+    -------------
     major: Boolean value. If set to true instruct model to predict major categories. Otherwise attempts to predict the minor 
         categories
     cutoff_lim: The minimum number of times a minor category must appear within the dataset in order for it to be considered
         when running model 
+    
+    Returns: Number of unique categories remaining within the dataset
     '''
     if major==True:
         print(len(class_encoder))
@@ -147,7 +154,11 @@ ImageClassifier.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512,
 class DescriptionClassifier(Module):
     '''
     Model for text processing inheriting from pytorch's nn.Modul. Takes in a given input size and unlike the previous
-    text classifier truncates the model so that the only layers right befoer the final layer considered
+    text classifier truncates the model so that the only layers right befoer the final layer considered so that the relevant network may be 
+    concatenated with the network corresponding to images when constructing final model
+
+    Arguments
+    -------------
     input_size: Size of input layer. Must be adjusted on the basis of dimensionality of matrices implicitly used during the propogation process in pytorch
     '''
     def __init__(self, input_size=768):
@@ -173,9 +184,20 @@ class DescriptionClassifier(Module):
 class CombinedModel(nn.Module):
     '''
     Combines the final layers corresponding to both the image (ImageClassifier) and text (DescriptionClassifier)
+
+    Arguments
+    -------------
     num_classes: The number of classes to be predicted in the final layer. In the context of the main training model iteration the values is the output of the "num_out" function defined earlier
     img_type: "image" if using actual images from data_files folder and "image_array" if using its numpy representation as in the dataframe
     input_size: Number of input layers to use
+
+    Attributes
+    -------------
+    img_type: Image array or image file in jpeg format depending on the img_type option input by user
+    image_classifier: Instantiation of image model classifier
+    text_classifier: Instantiation of text model classifier
+    main: Linear layers concatenatig the image and text classifier in order to avail of information provided by both 
+        text and images 
     '''
     def __init__(self, num_classes, img_type,input_size=768) -> None:
         super(CombinedModel, self).__init__()
@@ -197,6 +219,11 @@ class CombinedModel(nn.Module):
 class ImageTextDataset(torch.utils.data.Dataset):
     def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', cutoff_freq=20, img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False, max_length=20, min_count=2):
         '''
+        Dataset inheriting from pytorch's dataset primitive for storing explanatory and target features. Given the model is desgined to combine both image
+        and text data this particular dataset class instructs on how to preprocess images and text data passed in prior to it being input into the model
+
+        Arguments
+        -------------
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'. 
         cutoff_freq: The minimum number of times a given category must appear within the dataset in order for it to be considered by the model 
@@ -206,6 +233,17 @@ class ImageTextDataset(torch.utils.data.Dataset):
         is_test: Boolean value indicating whether the dataset corresponds to the test data (True), training data (False) or None in the event data is not split within this class in which case the entirety of the dataset is considered
         max_length: The maximum length of each sentence to be used within the Bert model 
         min_count: THe minimum number of times a given word must appear within the product description columns in order for it be considered within the parameters of the model
+
+        Attributes
+        -------------
+        img_inp_type: 'image_array' or 'image' dependnig on argumrnt passed in by user
+        img_dir: Relative path from current working directory to directory containing images
+        img_size: Image size
+        product_df: Preprocessed product description column 
+        tokenizer: Pretrained Bert tokenizer
+        model: Pretrained Bert model 
+        max_length: Maximum length of tokenized sentence. Sentences of a shorter length are padded while sentences of a longer length are
+            truncated
         '''
         ## Image Moel ##
         self.img_inp_type = X
@@ -281,6 +319,15 @@ class ImageTextDataset(torch.utils.data.Dataset):
 
     # Not dependent on index
     def __getitem__(self, idx): 
+        '''
+        Instructs dataset on how to index image and text observations
+
+        Arguments
+        -------------
+        idx: Index position to slice
+
+        Returns: Tubples comprising of (indexed_imaege, indexed_product_description, indexed_label) 
+        '''
         'Image Slicer'
         # As with original image classifier the last two transformeations within transforms.Compose must be transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         if self.img_inp_type == 'image':
@@ -309,10 +356,31 @@ class ImageTextDataset(torch.utils.data.Dataset):
         return self.image[idx], self.prod_description, self.y[idx]
     
     def __len__(self):
+        '''
+        Instructs datset on how to calculate length of dataset (when calling the len() function)
+
+        Returns: Length of datsaet
+        '''
         return len(self.main_frame)
 
 '''COMBINED DATALOADER'''
 def get_loader(img = 'image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), y='minor_category_encoded', batch_size=35, split_in_dataset = True, train_prop = 0.8, max_length=30, min_count=4, cutoff_freq=30):
+    '''
+    Uses pytorch's DataLoader to wrap an iterable around the ImageTextDataset so that the data may be passed in as batches when passing through the model trainign and evaluation loop
+
+    Argumnets
+    ------------
+    img: 'image_array' or 'image' depending on whether the use the image or its numpy representation
+    train_transformer: Transformations to apply to the training portion of the data
+    test_transformer: Transformations to apply to the testing phase of the dataset
+    split_in_dataset: Boolean: If set to True data split within the dataset and separate transformers applied to training and testing data. If set to False the test_transformer is applied
+        to both training and testing phase of the data
+    batch_size: Size of each batch passed into the model
+    training_prop: Proportion of the data on which model will be trained
+    max_length: Maximum length of sentences used in Bert tokenizer
+    cutoff_freq: The minimum number of times a given minor category must appear within the dataset in order for it to be considered for the purposes of the prediction model
+    min_count: The minimum number of times a given word must appear in the product description. Words occuring less than the number of times sepcifed are ommited for analytical purposes
+    '''
     if split_in_dataset == True:
         train_dataset = ImageTextDataset(transformer=train_transformer, X=img, img_size=224, y=y, is_test=False, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)
         test_dataset = ImageTextDataset(transformer=test_transformer, X=img, img_size=224, y=y, is_test=True, train_proportion=train_prop, max_length=max_length, min_count=min_count, cutoff_freq=cutoff_freq)

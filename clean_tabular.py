@@ -29,6 +29,14 @@ from itertools import product
 from PIL import Image
 
 class CleanData:
+    '''
+    Base class for preprocessing image and/or product description tables
+
+    Arguments
+    -------------
+    level: Level corresponding to minor product category. Must be integer value or 1 or more with a higher value corresponding to a finer classification
+    tab_names: Name of json files containing relevant tables
+    '''
     def __init__(self, level=1, tab_names = ['Products']) -> None:
         self.tab_names = tab_names # List of json files (without extension) passed in to the class from which dataframes shall be subsequently constructed from 
 
@@ -66,8 +74,11 @@ class CleanData:
         Please note this method is only valid if all tables used to construct are of a single table type i.e., all tables are only price tables or all 
         tables are only images tables
 
-        Parameters:
+        Arguments
+        -------------
         df_list: Must contain dataframes within self.table_dict passed in as a list
+
+        Returns: Dataframe associated with the key 'combined' from table_dict dictionary combining all tables of a given type
         '''
         if isinstance(self.tab_names, str):
             print('Method not valid when class instantiated with tab_names as type string')
@@ -87,7 +98,11 @@ class CleanData:
         '''
         Returns a dataframe displaying all observations with na values in any one of its columns 
 
+        Arguments
+        -------------
         df: String varaibles equal to one of the keys in self.table_dict
+
+        Returns: Count of all na values occuring within the dataframe
         '''
         print(f'The following NA values exist if dataframe {df}')
         return self.table_dict[df][self.table_dict[df].isna().any(axis=1)]
@@ -110,6 +125,8 @@ class CleanData:
         '''
         Convenience function exporting all dataframes existing within tick_dict onto an excel file with name equal to the its respective key 
         value within self.table_dict onto the data_files directory 
+
+        Retuns: Excel representation of the dataframe within the data_files directory with name equal to the associated key from the table_dict dictionary 
         '''
         for i, j in self.table_dict.items():
             ex_writer = pd.ExcelWriter(f'data_files/{i}.xlsx', engine='xlsxwriter')
@@ -127,8 +144,13 @@ class CleanData:
         Attributes each category tier its own column within the products dataframe up until the tier level specified by the tier argument.
         Given the category column structure of "major_categor"/"minor_category_1"/"minor_category_2"/...,  "major_category" corresponds to  tier level 0,
         "minor_category_1" corresponds to tier level 1 and so on
+
+        Arguments
+        -------------
         df: Dataframe/key corresponding to the products dataframe
         level: Tier level as described above, must be integer with maximum value equal to the number of maximum number of tier within the category column
+
+        Returns: Dataframe passed in with additional columns 'major_category_encoded' and 'minor_category_encoded'
         '''
         self.minor_encoder = LabelEncoder() # Instantiates label encoder corresponding to the minro tier cagegory 
         self.table_dict[df]['major_category'] = self.table_dict[df]['category'].str.split('/').apply(lambda i: i[0]) # Constructs the major category column
@@ -156,8 +178,13 @@ class CleanData:
         '''
         Displays summary statistics for teh price decomposed by the product major catgory and illustrates a box-plot showing distribution of price data
         grouped by category and filtered to only those observaations wthin each category with price below the quantile level specified by the user
+
+        Arguments
+        -------------
         df: Datafrae (self.table_dict key) containing the relevant price data
         quant: Value between 0 and 1. specifying the quantile level above which all observatoins are ommited from output
+
+        Returns: Cat and whisker plot for each major product category illustrating the price distribution of products within the category 
 
         '''
         data = self.expand_category(df)
@@ -209,6 +236,8 @@ class CleanImages(CleanData):
     '''
     Class for preprocessing only those JSON files containing image data with basic functionality inheritied fron the CleanData class
 
+    Arguments
+    -------------
     level: The category tier level corresponding to which the minor_category column will be constructed
     tab_name: Name of the json files containing image data passed in as a list and without the .json extension
     '''
@@ -219,7 +248,10 @@ class CleanImages(CleanData):
 
     def img_clean_pil(self, size = 512, mode = 'RGB'):
         '''
-        Preprocessing of all images within the iamges directory so that they are all of an identical size w
+        Preprocessing of all images within the iamges directory so that they are all of an identical size 
+
+        Arguments
+        -------------
         size: Size required for all images to be
         mode: "RGB" if images required to be colored and "L" if images requied to be be grayscale
         '''
@@ -254,6 +286,12 @@ class CleanImages(CleanData):
         '''
         Constructs data frame with columns representing each of the following image attributes (1) Image url (2) Numpy represntation of image (3) Image ID 
         (4) The number of channels in image (1 or 3) (5) Image mmode (6) Shape of numpy representation of image 
+
+        Arguments
+        -------------
+        normalize: If true the numpy representation of the image is bounded to values between 0 and 1
+
+        Returns: image_frame dataframe with additional columns image_id, image_array, image_shape, image_dimension and image_mode
         '''
         image_re = re.compile(r'(.*)\.jpg') # Checks current directory for all images of type jpeg
         img = [] # Instantiate empty lsit for storing image jpeg link
@@ -316,6 +354,11 @@ class CleanImages(CleanData):
         Convenience function first applying the img_clean_pil method to ensure all images are of identical size whilst maintaining the aspect ratio, 
         then applies img_clean_sk method to yield the images in numpy array form in a separate column along with the image shape and, finally, applies
         the merge_images method to associate each images with the specific product and product categories
+
+        Arguments
+        -------------
+        normalize: If true the numpy representation of the image is bounded to values between 0 and 1
+        mode: If "RGB" images are colored and if "L" images are grayscaled
         '''
         self.img_clean_pil(mode=mode, size=size)
         self.img_clean_sk(normalize=normalize)
@@ -334,6 +377,13 @@ class CleanImages(CleanData):
         plt.show()
 
     def describe_data(self, df):
+        '''
+        Outputs summary statistics and column information for image dataframe
+
+        Arguments
+        -------------
+        df: Number of dataframe contianing images
+        '''
         print('\n')
         print('Data frame columnn information')
         print(df.info())

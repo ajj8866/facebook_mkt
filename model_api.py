@@ -70,6 +70,8 @@ from PIL import Image
 from torchvision.transforms import ToTensor
 from torchvision import transforms
 from text_model import ProductDescpMannual
+import logging
+
 
 pd.options.display.max_colwidth = 400
 pd.set_option('display.max_columns', 15)
@@ -77,7 +79,7 @@ pd.set_option('display.max_rows', 40)
 plt.rc('axes', titlesize=12)
 final_layer_num = 24
 
-def get_label_lim(df=None, cutoff_lim = 20):
+def get_label_lim(df=None, cutoff_lim = 50):
     '''Gets the number of unique labels remaining in the dataset'''
     if df is None:
         merged_class = MergedData()
@@ -124,6 +126,7 @@ class DescriptionClassifier(Module):
         nn.Conv1d(64, 32, kernel_size=3, stride=1, padding=1), nn.LeakyReLU(inplace=True), nn.Flatten(), nn.Linear(160, 128), nn.Tanh(),nn.Linear(128, final_layer_num)) # !!!!!!!!!!!!!!!!!!!!!!
     
     def forward(self, inp):
+        print(inp.size())
         x = self.main(inp)
         return x
 
@@ -162,6 +165,11 @@ class CombinedModel(nn.Module):
 
 '''IMAGE PROCESSOR FOR UPLOAD ONTO API'''
 class ImageProcessor:
+    '''
+    Class used to preprocess grayscale and color images. In addition to normalising and converting images
+    into torch tensors the iamges are randomly flipped, cropped and rotated in order to render the model more robust, 
+    essentially providing it with a gretaer variety of images corresponding to a given product to which it can train
+    '''
     def __init__(self):
         self.transform = transforms.Compose([
                 transforms.Resize(256),
@@ -197,6 +205,14 @@ class ImageProcessor:
 
 '''TEXT PROCESSOR FOR UPLOAD ONTO API'''
 def text_process(txt, limit_it=True, vocab_limit=30000):
+    '''
+    Preproceses text within inddividual observations of the product description column by stripping unnecessary punctuation, performing
+    lemmitizations and fixing contractions
+
+    Arguments:
+    -------------
+    limit_it: Boolean value. If true the size of the vocabulatry is limited by the amount specified in the a
+    '''
     prod_class = ProductDescpMannual()
     word_encoder, word_decoder, _ = prod_class.vocab_encoder(col='product_description', limit_it=limit_it, vocab_limit=vocab_limit)
     stop_words = set(stopwords.words('english'))
@@ -217,6 +233,24 @@ def text_process(txt, limit_it=True, vocab_limit=30000):
 
 class TextProcessor:
     def __init__(self, max_length=30):
+        '''
+        Uses pretrained Bert model and ProductDescpMannual ckass to preprocess text prior to using it in combined
+        model 
+
+        Arguments
+        -------------
+        max_length: Maximum length of sentences to be tokenized. Sentences of shorter length are padded and those of longer 
+            length truncated
+        
+        Attributes
+        -------------
+        full_word_ls: List of all unique words appearing in the 
+        product_description_counter: Dictionary with keys comprising of the unique words in the product description and the values
+            equal to the number of times it occurs it the dataset
+        max_length: The maximum length of tokenized sentences 
+        tokenizer: Pretrained bert tokenizer
+        model: Pretrained Bert model 
+        '''
         prod = ProductDescpMannual()
         self.full_word_ls, _ = prod.clean_prod()
         self.product_description_counter = Counter(self.full_word_ls)
@@ -226,6 +260,17 @@ class TextProcessor:
         self.model.eval()
 
     def __call__(self, txt, min_count=2):
+        '''
+        Stipulates how the batches should be preprocessed 
+
+        Arguments
+        -------------
+        min_count: The minimum number of times a word must appear in the product description column. Words appearing less than this 
+            number of times are ommitted from data analysis
+        txt: The text to be preprocessed 
+
+        Returns: Preprocessed product description tokenzied as per pre-trained BertTokenizer 
+        '''
         processed_txt = text_process(txt=txt)
         pre_ls = processed_txt.split()
         pre_ls = [i for i in pre_ls if self.product_description_counter[i]>min_count]
@@ -241,12 +286,13 @@ class TextProcessor:
         
 
 '''COMBINED MODEL WEIGHTS'''
-combined_model=CombinedModel(num_classes=len(class_decoder))
+combined_model=CombinedModel(num_classes=len(class_decoder), input_size=768, decoder=class_decoder)
+print(len(class_decoder))
 combined_model.load_state_dict(torch.load('image_text_combined.pt', map_location='cpu'))
 
 app = FastAPI()
 image_processor = ImageProcessor()
-text_processor = TextProcessor()
+text_processor = TextProcessor(max_length=40)
 
 
 @app.post('/combined')
