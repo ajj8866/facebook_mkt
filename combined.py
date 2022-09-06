@@ -404,21 +404,48 @@ def get_loader(img = 'image_array', train_transformer = transforms.Compose([tran
 '''COMBINE MODEL TRAINING'''
 def train_model(combined_optimizer=optim.SGD, major=True, cutoff_lim=30, loss=nn.CrossEntropyLoss, batch_size=32, num_epochs=20, comb_scheduler=None, initial_lr=0.1, fin_lr=0.0001, step_interval=2, min_count=4, train_prop=0.8,
 split_in_dataset=True, max_length=30, y='major_category_encoded', img='image_array', train_transformer = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(40), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]), test_transformer = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])):
+    '''
+    Function used to iterate through batches as prescribed by the paramters in the get_loader for a number of epochs specified by the user. With each batch passed in the training data is used to update the weights
+    corresponding to the nodes specified in the final layers of the image and text neural network, given the gradient computed on each iteration. Pytorch set to eval mode for the testing set and weights derived in prior
+    training phase simply applied to datapoints within the testing to gauge how such weights perform out-of-sample
+
+    Arguments
+    -------------
+    combined_optimizer: The optimizer to use (SGD by default)
+    major: If set to "major" attempts to predict the major category and if set to "minor" attempts to predict the minor categories within the dataset provided such categories meet the criteria
+        specified by the cutoff_lim argument 
+    loss: Loss type (CrossEntropyLoss by default)
+    num_epochs: Number of epochs to use i.e., number of times the model should iterate through the entirety of the dataset
+    comb_scheduler: The learning rate scheduler to use. If none specidied custom scheuler which decreases exponentially at a fixed rate from the initial learning (initial_lr) to the final learning
+        rate (fin_lr) is used with the learning rate adjusted after a number of periods specified by the step_interval argument
+    min_count: The minimum number of times a given word must appear in the product description column in order to be used as part of the vocabulary 
+    training_prop: Training proportion of data
+    split_in_dataset: Whether or not to split within the Dataset class 
+    max_length: Length of sentence to be used when encoding using pretrained Bert tokenizer
+    img: "image" if using jpeg images in data_files directory and "image_array" if using the numpy representation of the given images
+    train_transformer: Transformations to use for trainnign proportion of the dataset
+    test_transformer; Transformations to use for testing proportion of the dataset
+
+    Returns: Trained model in addition to saving model weights under the namge image_text_combined.pt in current working directory  
+    '''
     if major==True:
         assert y=='major_category_encoded'
     else:
         assert y=='minor_category_encoded'
-    print('Number of unique categories remaining in training model: ', num_out(major=major, cutoff_lim=cutoff_lim))
-    combined_model = CombinedModel(input_size=768, num_classes=num_out(major=major, cutoff_lim=cutoff_lim), img_type=img)
-    optimizer =  combined_optimizer(combined_model.parameters(), lr=initial_lr)
-    criterion = loss()
+    print('Number of unique categories remaining in training model: ', num_out(major=major, cutoff_lim=cutoff_lim)) # Prints out the number of outputs to be predicted in final layuer of model 
+    combined_model = CombinedModel(input_size=768, num_classes=num_out(major=major, cutoff_lim=cutoff_lim), img_type=img) # Instantiates combined model 
+    optimizer =  combined_optimizer(combined_model.parameters(), lr=initial_lr) # Instantiates optimizer
+    criterion = loss() # Instantiates loss criteria
+
+    # Should no scheduler be specified the learning rate decreases exponentially from initial_lr to fin_lr every step_interval steps
     if comb_scheduler is None:
         num_steps = num_epochs//step_interval
-        gamma_mult = (fin_lr/initial_lr)**(1/num_steps)
-        step_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=step_interval, gamma=gamma_mult) 
+        gamma_mult = (fin_lr/initial_lr)**(1/num_steps) # Gamma factor by which the learining rate must be multiplied in order to yield a final learning rate fin_lr in the final epoch 
+        step_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=step_interval, gamma=gamma_mult) # Uses step scheduler to adjust learning rate 
     else:
         comb_scheduler()
-    writer = SummaryWriter()
+
+    writer = SummaryWriter() # Instantiates SummaryWriter for plotting of graphs on tensorboard backend 
     best_accuracy = 0
     train_size, test_size, dataloader_dict = get_loader(img=img, y=y, split_in_dataset=split_in_dataset, train_prop=train_prop, min_count=min_count, max_length=max_length, cutoff_freq=cutoff_lim, train_transformer=train_transformer, test_transformer=test_transformer, batch_size=batch_size)
     dataset_size = {'train': train_size, 'eval': test_size}
