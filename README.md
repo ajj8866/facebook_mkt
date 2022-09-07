@@ -11,6 +11,21 @@ Scripts Included
 - combined.py 
 - text_model.py 
 
+The data based off of which the model is constructed is stored within the `data_files` directory, specifically the `Products.json` and `Images.json` files, both of which are converted into a dataframe object. The primary variables of concern are the `product_description` column, which is the primary predictor variables when attempting to use NLP to infer which category of products the text most likely refers to and `category` column which constitutes the variable to be predicted. 
+
+Given, in its raw form, each observation within the `category` column comprises of a string which specifies the major product category on the left hand side and proceeds to further the decompose the classification into a finer classfication of minor categories separated by `/` the initial preprocessing entails segregating the category into a major category and a minor category of a level specified by the user. An illustration of the category column before and after is provided below.
+
+<img width="614" alt="image" src="https://user-images.githubusercontent.com/100163231/188771362-68f69f87-537c-42a1-a778-623e313689d2.png">
+
+<img width="350" alt="image" src="https://user-images.githubusercontent.com/100163231/188771429-b582e527-c0ed-4b47-8902-c86a20395cf7.png">
+
+
+The image model uses the jpeg images in their raw form contained within the image directory to convert them into a consistent size before appending their URL to the images dataframe. 
+
+Though the model as is classifies the major categories an option for predicting the minor category is provided. However, given low frequency with which uniue minor categories appear over the course of the dataset the explanatory power of the model is not only severely limited but a considerable portion of exsiting minor categories are ommitted should they fail to appear a minimum number of times within the dataset. 
+
+
+
 linear_regression.ipynb and svm_image_regression are primarily used for initial ananlysis purposes and bear no influence of the main model. 
 
 ## clean_tabular.py
@@ -200,5 +215,33 @@ Used to preproces the column product description within dataframe to yield indiv
 | --- | --- |
 | clean_prod | Iterates through each individual observation in the product description column applying a series of preprocessing steps such as stripping out uneeded punctuation, fixing contractions (e.g., didn't to did not, couldn't to could not) and lemmitizations (e.g, running to run, fixing to fix) before converting all characters to lower case |
 | word_freq | Yields a dictoinary using the individual words occuring over the entirety of the product description column as keys and the number of times each unique word occurs within the dataset as values. <br />If an integer is passed into the `num_items` argument the dictionary is truncated to the integer value specified by the argument resulting in only the most frequently occuring words remaining wthin the dictionary | 
+| get_word_set | Returns a tuple comprising of the attributes `full_word_ls` (List of all words appearing in the product description column including included those repeated) `full_word_set` (list of all words appearing in the dataset at least once) and an integer equal to the number of unique words appearing in the product description column + 1 (the plus one added in for convenience when assigning the encoded value for a token appearing outside the predefined vocabulariy size) |
+| vocab_encoder | Should the model not have a predefined encoding mechanism of its own this method encodes the product description column using a vocabulary size input by the user as the `vocab_limit` argument or the entirety of vocabulary comprising the product description column should the argument `limit_it` be set to False |
+| dataloader_preprocess | Method specifically applied to the skip-gram model of word processing. Preprocesses product description column in a manner whereby the skip-gram model may be directly applied |
 
+#### DescriptionClassifier
+Uses sequence of convolutions, dropouts, linear and non-linear layers to train tokenized sentences passed into the model
+
+Takes in the following arguments on instantiation:
+- `input_size`: By default 768 but may be adjusted
+- `num_classes`: Number of classes model has to predict in final layer (by default equal to 13 which corresponds to the number of major categories
+
+The `forward` method takes in the tokenized representation of sentences to pass through the layyers stipulated in the neural network model 
+
+### Primary Funcation (train_model)
+- Uses classes defined in current script to pass in the dataset predictor variables as batches (as specified in the `get_loader` function) to:
+  - Adjust weights corresponding to the nodes existing within the model in an attempt to make inferences regarding which particular product category the text within the product description category corresponds to, during the training phase
+  - Based on the weights obtained during the training phase, tests the efficacy of applying the weights derived to the next epoch using the testing data
+  - The best weights for each layer are selected based on their performance during the training phase and saved under the file name `prodcut_model.pt`
+  
+ The section after the `__name__=='__main__'` simply declares and input the various arguments into the `train_model` function
+ 
+## Relative Performance
+The picture below illustrates the relative performance of the image and text model on tensorboard
+- The orange liine represents the performance of only the image model demonstrating an accuracy of over 99% on the training portion of the dataset and approximately 55% for the testing set
+- The blue line represents the performance of the text model demonstrating an accuracy of around 95% for the training portion of the dataset and 65% for the testing portion of the dataset
+
+![image](https://user-images.githubusercontent.com/100163231/188768533-68d5612b-4374-44f9-a7eb-339e80868678.png)
+
+It stands to reason rather than using such models in isolation combining the layers from both the image and text models into a single neural network model would add considerable explanatory power, providing the rationale behind the `combined.py` script discussed below. 
 
