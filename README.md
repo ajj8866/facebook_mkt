@@ -245,3 +245,22 @@ The picture below illustrates the relative performance of the image and text mod
 
 It stands to reason rather than using such models in isolation combining the layers from both the image and text models into a single neural network model would add considerable explanatory power, providing the rationale behind the `combined.py` script discussed below. 
 
+## combined.py
+This script attempts to draw on the explanatory power impounded by both the prediction model using images to predict product category as well as the prediction model using text to predict product category. <br /> In order to accomplish this both the image model and text model are recycled with one main adjustment; the nerual network layers for both models are truncated so that the final layer (using the prior layer to make the final prediction) is ommitted from the network. The remaining layers are then left as is with the exception of the final linear layers which are resized so that the size of both the output layers stemming from the final output layer are of the same size in order to allocate equal weighting to both models. <br /> In order to accommodate the modeified model the dataset class is ammended so that indexing a single observation yields a tuple comprising of the image index, product description index and the target product description category. <br /> Once the dataloader, dataset and models have been constructed the model (`train_model`) is passed in the training data on which the weightings of the various nodes are adjusted and testing data on which the the efficacy of the model on which the prior epoch was trained is obtained. The weights corresponding to the epoch with the highest accuracy are saved into a file named `image_text_combined.pt`
+
+<b> Please note the current iteration of the combined model does not support passing in `image_array` as an option to the training model's `img` argument. The matter should be resolved in a future iteration </b>
+
+As the tensorboard illustration below demonstrates the combined model results are superior to that of both the training and testing data. However, the testing set results should be taken with a grain of salt given, unliked the isolated image and text models, there is a bit of an overlap between the training and testing data
+
+<img width="240" alt="image" src="https://user-images.githubusercontent.com/100163231/189203319-c90fde3c-0ce2-47ec-a5b8-afe38ec03634.png">
+
+<img width="220" alt="image" src="https://user-images.githubusercontent.com/100163231/189203412-4e5fe5f5-4331-45b6-905c-e534267763c2.png">
+
+## Containerization of Model 
+Finally in order for the model to be deployed across machine the model was containerized using the docker specifications in the `Dockerfile` and a docker compose file (`docker-compose.yaml`) constructed for convenience. 
+
+In order to facilitate containerization the python's `fastapi` was used to enable end users using the model on their local machines to test how any image and its corresponding product description would be classified given the weights of the finalized combined model. 
+
+<img width="571" alt="image" src="https://user-images.githubusercontent.com/100163231/189203977-6167155d-bf88-4f26-85e0-b123c83cc0f3.png">
+
+In r
