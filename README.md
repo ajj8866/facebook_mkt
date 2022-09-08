@@ -263,4 +263,29 @@ In order to facilitate containerization the python's `fastapi` was used to enabl
 
 <img width="571" alt="image" src="https://user-images.githubusercontent.com/100163231/189203977-6167155d-bf88-4f26-85e0-b123c83cc0f3.png">
 
-In r
+In order to view the API for uploading the relevatn information: 
+- Navigate to `htthp://0.0.0.0:8080/docs` on local host
+- Click on the `Try it out` button 
+<img width="540" alt="image" src="https://user-images.githubusercontent.com/100163231/189219725-5991a1bc-bad9-4a3c-92e5-57991c6a6630.png">
+- Upload the relevant image file using the `choose file` and enter the product description and press execute
+<img width="567" alt="image" src="https://user-images.githubusercontent.com/100163231/189219949-ff81d4f5-e014-4631-b706-36e3a689563a.png">
+
+The image below illustrats the model correctly predicted the `Computers and Software` category for an IMac listed on the EBay website
+
+<img width="480" alt="image" src="https://user-images.githubusercontent.com/100163231/189220811-4485d51a-5910-467d-839a-4894bba040cf.png">
+
+<img width="620" alt="image" src="https://user-images.githubusercontent.com/100163231/189220870-b45d7fdf-0acf-4a53-88b8-606357bc7cfb.png">
+
+<img width="422" alt="image" src="https://user-images.githubusercontent.com/100163231/189220955-7223203c-3adc-4e04-89a8-4e7f028ab391.png">
+
+
+
+A second upload, also from EBay demonstrates the model correctly predicting the cateogry to be `Baby and Kids Stuff`
+
+<img width="304" alt="image" src="https://user-images.githubusercontent.com/100163231/189221154-19183e70-c67d-412a-a8f1-d5480159bc64.png">
+
+<img width="586" alt="image" src="https://user-images.githubusercontent.com/100163231/189221295-dd8aa83f-c335-4075-8e00-1186d2cfbc09.png">
+
+<img width="538" alt="image" src="https://user-images.githubusercontent.com/100163231/189221397-f95e0b59-4d0a-4bba-8a9c-e74b00071910.png">
+
+
