@@ -288,4 +288,12 @@ A second upload, also from EBay demonstrates the model correctly predicting the 
 
 <img width="538" alt="image" src="https://user-images.githubusercontent.com/100163231/189221397-f95e0b59-4d0a-4bba-8a9c-e74b00071910.png">
 
+## AWS EC2 Runtime
+Finally the docker file was used to run the model on an EC2 instance. 
+![image](https://user-images.githubusercontent.com/100163231/189420165-0457cac0-b5d4-4b07-be5f-35b35e578d52.png)
+
+![image](https://user-images.githubusercontent.com/100163231/189420211-f8bb698e-5e61-44bc-8885-298545910991.png)
+![image](https://user-images.githubusercontent.com/100163231/189420329-33f1c42f-09c6-4c7e-91c0-15bbc2669c65.png)
+![image](https://user-images.githubusercontent.com/100163231/189420377-f90b0309-0991-448a-b2e7-55b8ce9a778f.png)
+
 
