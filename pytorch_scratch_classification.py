@@ -21,6 +21,12 @@ from PIL import Image
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, transformer = transforms.Compose([ToTensor()]), X = 'image', y = 'major_category_encoded', cutoff_freq=20, img_dir = Path(Path.cwd(), 'images'), img_size=224, train_proportion = 0.8, is_test = False):
         '''
+        Instantiates dataset object inheriting from pytorch's Dataset allowing for storage of individual explanatory variables, target variables, how to index the dataset 
+        and the total lenght of the dataset
+
+        Arguments
+        -------------
+        transformer: Transforamtions applied ot individual images
         X: Can be either 'image' if dataset to be instantiated using image object or 'image_array' if dataset to be instantiated using numpy array 
         y: Can be either 'major_category_encoded' or 'minor_category_encoded'
         '''
@@ -28,12 +34,15 @@ class Dataset(torch.utils.data.Dataset):
         self.transformer = transformer
         self.img_dir = img_dir
         self.img_size = img_size
-        merge_class = MergedData()
-        merged_df = merge_class.merged_frame
-        filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy()
+        merge_class = MergedData() # Instantiates MergedData class constructing a merged dataframe of image and proudct description data
+        merged_df = merge_class.merged_frame # Access the merged frame formed when instantiating the MergedData class
+        filtered_df = merged_df.loc[:, ['image_id', X, re.sub(re.compile('_encoded$'), '', y), y]].copy() # Accessses relevant category columns depending on whether major or minor category is selected
         filtered_df.dropna(inplace=True)
         print(filtered_df[y].value_counts())
         print(filtered_df[re.sub(re.compile('_encoded$'), '', y)].value_counts())
+
+        # Should minor category be chosen as category to be predicted the following if condition removes the category appearing an insufficient number of times to allow any inference of substance and 
+        # recalculates the encoder to be used given the new dataset
         if y=='minor_category_encoded':
             lookup = filtered_df.groupby([y])[y].count()
             filt = lookup[lookup>cutoff_freq].index
@@ -42,6 +51,8 @@ class Dataset(torch.utils.data.Dataset):
             filtered_df[y] = new_sk_encoder.fit_transform(filtered_df['minor_category'])
         print('Number of Unique Categories Remaining: ', len(filtered_df[y].unique()))
         train_end = int(len(filtered_df)*train_proportion)
+
+        # Shuffles the data and splits the dataset into training and testing should a Boolean be passed into the is_test argument 
         if is_test is not None:
             filtered_df = shuffle(filtered_df)
             filtered_df.reset_index(inplace=True)
@@ -62,6 +73,9 @@ class Dataset(torch.utils.data.Dataset):
 
     # Not dependent on index
     def __getitem__(self, idx): 
+        '''
+        Instructs dataloade how index individual observations within the sample
+        '''
         if self.img_inp_type == 'image':
             self.X[idx] =  self.transformer(Image.open(os.path.join(self.img_dir, self.X[idx])))
         else:
@@ -77,6 +91,9 @@ class Dataset(torch.utils.data.Dataset):
         return self.X[idx], self.y[idx]
 
     def __len__(self):
+        '''
+        Instruct dataloader how to determine the lenght of the dataset
+        '''
         return len(self.y)
 
 

@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, MetaData, inspect
 import boto3
-from aws_tool import *
+import time
 import numpy as np
 import pandas as pd
 import xlsxwriter

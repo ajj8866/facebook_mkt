@@ -74,6 +74,8 @@ class ProductDescpMannual(CleanData):
         '''
         Preprocesses words so that they are in a format whereby tokenisation may be readily implemented
 
+        Arguments
+        -------------
         col: Name of column where product description is stated
         '''
         stop_words = set(stopwords.words('english')) # Uses nltk's stopwords corpus to yield frequently used words that would probably not add any value to model results when encoded
@@ -106,6 +108,9 @@ class ProductDescpMannual(CleanData):
         '''
         Uses the list aggregating the individual text contained within the all_text_ls list returne from the clean_prod method, restrciting
         the output to only the top num_items most frequently occuring words
+
+        Arguments
+        -------------
         num_items: Integer representing the 
         '''
         all_words = self.clean_prod(col=col)[0]
@@ -129,6 +134,9 @@ class ProductDescpMannual(CleanData):
     def vocab_encoder(self, col='product_description', limit_it=False, vocab_limit=30000):
         '''
         Establishes the vocabulary and encodes it 
+
+        Arguments
+        -------------
         col: Column corresponding to the product_description
         limit_it: Boolean value. If set to True the vocabulary size is limited to a size set by the vocab_limit arugment based on the the most commonly occuring words in the dataset
         vocab_limit: The size of the vocabulary to be used 
@@ -162,6 +170,13 @@ class ProductDescpMannual(CleanData):
         
         Not used for the currnet model availing of the Bert Tokenizer but render the class more versatile extending its used to models not used
         for the purposes of the currnet project 
+
+        Arguments
+        -------------
+        limit_it: Boolean. If set to True size of vocabulary to use limite to the number specified by the vocab_lim argument and any text with a word outside the scope of the specified 
+            vocabulary is allocated the encoded token <UNKNOWN>
+        vocab_lim: Sise of vocabulary to use if limit_it set to True
+        context_size: Number of words either side of a given word to serve as context i.e., the total context size for every given word would be in effecct 2 times the integer value specified
         '''
         product_encoder, product_decoder, DF = self.vocab_encoder(limit_it=limit_it, vocab_limit=vocab_lim)
         df = DF.copy()

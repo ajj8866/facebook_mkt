@@ -82,30 +82,44 @@ final_layer_num = 24
 def get_label_lim(df=None, cutoff_lim = 50):
     '''Gets the number of unique labels remaining in the dataset'''
     if df is None:
-        merged_class = MergedData()
-        merged_df = merged_class.merged_frame
+        merged_class = MergedData() # Instantiated MergedData class
+        merged_df = merged_class.merged_frame  # Set the dataframe to be used to be equal to the merged_frame attribute from the MergedData class
     else:
         merged_df = df.copy()
     merged_df.dropna(inplace=True)
-    lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count()
-    filt = lookup_group[lookup_group>cutoff_lim].index
-    merged_df = merged_df[merged_df['minor_category_encoded'].isin(filt)]
+    lookup_group = merged_df.groupby(['minor_category_encoded'])['minor_category_encoded'].count() # Construct new dataframe with the index equal to the unique categories and values equal to the number of times the category appears in dataset
+    filt = lookup_group[lookup_group>cutoff_lim].index # Obtains a list of categories from lookup_group, dropping those appearing an insufficient number of times
+    merged_df = merged_df[merged_df['minor_category_encoded'].isin(filt)] # Uses the list derived in the line above to filter the primary dataframe
     print(len(merged_df['minor_category_encoded'].unique()))
     return len(merged_df['minor_category_encoded'].unique())
 
 '''IMAGE MODEL'''
-prod_dum = CleanData()
-class_dict = prod_dum.major_map_encoder.keys()
+prod_dum = CleanData() # Instantiate CleanData class
+class_dict = prod_dum.major_map_encoder.keys() # Yield the keys for major category encoder (category names)
 classes = list(class_dict)
-class_values = prod_dum.major_map_encoder.values()
-class_encoder = prod_dum.major_map_encoder
-class_decoder = prod_dum.major_map_decoder
+class_values = prod_dum.major_map_encoder.values() # Yield the value encoded values of categories
+class_encoder = prod_dum.major_map_encoder # Save encoder under variable name class_encoder
+class_decoder = prod_dum.major_map_decoder # Save decoder under variable name class_decoder
 
 ImageClassifier = models.resnet50(pretrained=True)
 for i, param in enumerate(ImageClassifier.parameters(), start=1):
     param.requires_grad=False
 
 def num_out(major=True, cutoff_lim = 50):
+    '''
+    Yields the number of categories to be calculated within the final layer of the  model depending on whether 
+    the model aims to calculate the major or minor categories and if calculating the minor categories the minimum number 
+    of time such a category must appear in the dataset
+
+    Arguments
+    -------------
+    major: Boolean value. If set to true instruct model to predict major categories. Otherwise attempts to predict the minor 
+        categories
+    cutoff_lim: The minimum number of times a minor category must appear within the dataset in order for it to be considered
+        when running model 
+    
+    Returns: Number of unique categories remaining within the dataset
+    '''
     if major==True:
         print(len(class_encoder))
         return len(class_encoder)
@@ -118,7 +132,19 @@ ImageClassifier.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=512,
 
 '''TEXT MODEL'''
 class DescriptionClassifier(Module):
+    '''
+    Model for text processing inheriting from pytorch's nn.Modul. Takes in a given input size and unlike the previous
+    text classifier truncates the model so that the only layers right befoer the final layer considered so that the relevant network may be 
+    concatenated with the network corresponding to images when constructing final model
+
+    Arguments
+    -------------
+    input_size: Size of input layer. Must be adjusted on the basis of dimensionality of matrices implicitly used during the propogation process in pytorch
+    '''
     def __init__(self, input_size=768):
+        '''
+        Defines the layers to subsequently be used over the course of the forward proceess
+        '''
         super(DescriptionClassifier, self).__init__()
         self.main = nn.Sequential(nn.Conv1d(input_size, 512, kernel_size=3, stride=1, padding=1), nn.Dropout(p=0.2),nn.LeakyReLU(inplace=True),  MaxPool1d(kernel_size=2, stride=2), 
         nn.Conv1d(512, 256, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True), MaxPool1d(kernel_size=2, stride=2), 
@@ -126,6 +152,9 @@ class DescriptionClassifier(Module):
         nn.Conv1d(64, 32, kernel_size=3, stride=1, padding=1), nn.LeakyReLU(inplace=True), nn.Flatten(), nn.Linear(160, 128), nn.Tanh(),nn.Linear(128, final_layer_num)) # !!!!!!!!!!!!!!!!!!!!!!
     
     def forward(self, inp):
+        '''
+        Forward phase of model. Takes in pytorch representation of text embedding to yield weights to be used within the neural network
+        '''
         print(inp.size())
         x = self.main(inp)
         return x
@@ -134,6 +163,23 @@ class DescriptionClassifier(Module):
 '''COMBINED MODEL'''
 '''Combined Model Classifier'''
 class CombinedModel(nn.Module):
+    '''
+    Combines the final layers corresponding to both the image (ImageClassifier) and text (DescriptionClassifier)
+
+    Arguments
+    -------------
+    num_classes: The number of classes to be predicted in the final layer. In the context of the main training model iteration the values is the output of the "num_out" function defined earlier
+    img_type: "image" if using actual images from data_files folder and "image_array" (option currently not working) if using its numpy representation as in the dataframe
+    input_size: Number of input layers to use
+
+    Attributes
+    -------------
+    img_type: Image array or image file in jpeg format depending on the img_type option input by user
+    image_classifier: Instantiation of image model classifier
+    text_classifier: Instantiation of text model classifier
+    main: Linear layers concatenatig the image and text classifier in order to avail of information provided by both 
+        text and images 
+    '''
     def __init__(self, num_classes, input_size=768, decoder=class_decoder) -> None:
         super(CombinedModel, self).__init__()
         self.image_classifier = ImageClassifier
@@ -149,16 +195,43 @@ class CombinedModel(nn.Module):
         return combined_features
 
     def predict(self, image, txt):
+        '''
+        Additoinal method used for the purposes of using python's fastapi to allow end users to upload a product image and description 
+        allowing the model to infer which product category the product likely belongs to 
+
+        Arguments
+        -------------
+        image: Uploaded image
+        txt: Text input
+        '''
         with torch.no_grad():
             x = self.forward(image_features=image, text_features=txt) # !!!!!!!!!!!!!!!!!!!!!!
             return x
     
     def predict_proba(self, image, txt):
+        '''
+        Additoinal method used for the purposes of using python's fastapi to allow end users to upload a product image and description 
+        allowing the model to infer which product category the product likely belongs to 
+
+        Arguments
+        -------------
+        image: Uploaded image
+        txt: Text input 
+        '''
         with torch.no_grad():
             x = self.forward(image_features=image, text_features=txt)
             return torch.softmax(x, dim=1)
     
     def predict_class(self, image, txt):
+        '''
+        Additoinal method used for the purposes of using python's fastapi to allow end users to upload a product image and description 
+        allowing the model to infer which product category the product likely belongs to 
+
+        Arguments
+        -------------
+        image: Uploaded image
+        txt: Text input 
+        '''
         with torch.no_grad():
             x = self.forward(image_features=image, text_features=txt)
             return self.decoder[int(torch.argmax(x, dim=1))]
@@ -252,12 +325,12 @@ class TextProcessor:
         model: Pretrained Bert model 
         '''
         prod = ProductDescpMannual()
-        self.full_word_ls, _ = prod.clean_prod()
+        self.full_word_ls, _ = prod.clean_prod() # Use ProductDescpMannual class to clean product desciption columns text
         self.product_description_counter = Counter(self.full_word_ls)
         self.max_length = max_length
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.model = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=True)
-        self.model.eval()
+        self.model.eval() # Set model to evaluation model given model weights already determined so only evaluation required
 
     def __call__(self, txt, min_count=2):
         '''
@@ -295,15 +368,22 @@ image_processor = ImageProcessor()
 text_processor = TextProcessor(max_length=40)
 
 
-@app.post('/combined')
+@app.post('/combined') # Decorator used to access enpoints when entering url 
 def product_upload(img: UploadFile=File(...), description: str=Form(...)):
+    '''
+    Function instructing how API should process images uplaode and text input into the description form
+    Arguments
+    -------------
+    img: Sets the upload option on API homepage (/docs) allowing user to upload images
+    description: Sets up a form on API homepage (/docs) allowing user to enter input text comprising product description 
+    '''
     uploaded_image = Image.open(img.file)
     processed_img = image_processor(uploaded_image)
     processed_txt = text_processor(description)
     print(processed_txt)
-    predicted_raw = combined_model.predict(processed_img, processed_txt) # !!!!!!!!!!!!!!!!!!!!!!
-    predicted_probabilities = combined_model.predict_proba(processed_img, processed_txt)
-    predicted_class = combined_model.predict_class(processed_img, processed_txt)
+    predicted_raw = combined_model.predict(processed_img, processed_txt) # Shows raw values corresponding to final layer
+    predicted_probabilities = combined_model.predict_proba(processed_img, processed_txt) # Shows probabilities corresponding to each cateogry 
+    predicted_class = combined_model.predict_class(processed_img, processed_txt) # Shows which class (product_category) the model has predicted the uploaded image and associated text likely refers to 
     print('Predicted Raw Values:\n', predicted_raw)
     print('Predicted Probabilities:\n', predicted_probabilities)
     print('Predicted Class: ', predicted_class)
